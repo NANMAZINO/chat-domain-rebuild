@@ -35,3 +35,16 @@ out/
 
 ### VS Code ###
 .vscode/
+
+### Local environment ###
+.env
+.env.*
+!.env.example
+
+### Runtime logs ###
+*.log
+logs/
+
+### Agent workspace ###
+.agents/
+AGENTS.md
