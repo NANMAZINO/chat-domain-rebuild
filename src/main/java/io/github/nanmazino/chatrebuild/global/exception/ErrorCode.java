@@ -17,6 +17,7 @@ public enum ErrorCode {
     USER_NICKNAME_DUPLICATED(HttpStatus.CONFLICT, "USER_NICKNAME_DUPLICATED", "이미 사용 중인 닉네임입니다."),
     POST_NOT_FOUND(HttpStatus.NOT_FOUND, "POST_NOT_FOUND", "게시글을 찾을 수 없습니다."),
     POST_ALREADY_CLOSED(HttpStatus.CONFLICT, "POST_ALREADY_CLOSED", "이미 모집이 종료된 게시글입니다."),
+    CHAT_MEMBER_ALREADY_ACTIVE(HttpStatus.CONFLICT, "CHAT_MEMBER_ALREADY_ACTIVE", "이미 참여 중인 채팅방입니다."),
     INTERNAL_SERVER_ERROR(HttpStatus.INTERNAL_SERVER_ERROR, "INTERNAL_SERVER_ERROR", "서버 내부 오류가 발생했습니다.");
 
     private final HttpStatus status;

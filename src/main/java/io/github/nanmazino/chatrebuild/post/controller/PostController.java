@@ -7,6 +7,7 @@ import io.github.nanmazino.chatrebuild.post.dto.request.UpdatePostRequest;
 import io.github.nanmazino.chatrebuild.post.dto.response.ClosePostResponse;
 import io.github.nanmazino.chatrebuild.post.dto.response.CreatePostResponse;
 import io.github.nanmazino.chatrebuild.post.dto.response.DeletePostResponse;
+import io.github.nanmazino.chatrebuild.post.dto.response.JoinPostResponse;
 import io.github.nanmazino.chatrebuild.post.dto.response.PostDetailResponse;
 import io.github.nanmazino.chatrebuild.post.dto.response.PostListResponse;
 import io.github.nanmazino.chatrebuild.post.entity.PostStatus;
@@ -73,6 +74,17 @@ public class PostController {
     @Operation(summary = "게시글 상세 조회", description = "게시글 상세를 조회합니다.")
     public ResponseEntity<ApiResponse<PostDetailResponse>> getPost(@PathVariable Long postId) {
         PostDetailResponse response = postService.getPost(postId);
+
+        return ResponseEntity.ok(ApiResponse.success(response));
+    }
+
+    @PostMapping("/{postId}/join")
+    @Operation(summary = "게시글 참여", description = "인증 사용자가 게시글과 연결된 채팅방에 참여합니다.")
+    public ResponseEntity<ApiResponse<JoinPostResponse>> joinPost(
+        @PathVariable Long postId,
+        @AuthenticationPrincipal JwtPrincipal principal
+    ) {
+        JoinPostResponse response = postService.joinPost(postId, principal.userId());
 
         return ResponseEntity.ok(ApiResponse.success(response));
     }

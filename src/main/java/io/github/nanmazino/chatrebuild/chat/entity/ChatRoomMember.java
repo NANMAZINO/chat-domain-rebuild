@@ -74,4 +74,10 @@ public class ChatRoomMember extends BaseTimeEntity {
         this.status = status;
         this.joinedAt = joinedAt;
     }
+
+    public void reactivate(LocalDateTime joinedAt) {
+        this.status = ChatRoomMemberStatus.ACTIVE;
+        this.joinedAt = joinedAt;
+        this.leftAt = null;
+    }
 }
