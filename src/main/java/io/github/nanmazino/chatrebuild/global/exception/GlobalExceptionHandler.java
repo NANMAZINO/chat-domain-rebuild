@@ -5,6 +5,8 @@ import io.github.nanmazino.chatrebuild.global.response.ErrorResponse;
 import jakarta.validation.ConstraintViolationException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.security.access.AccessDeniedException;
+import org.springframework.security.authorization.AuthorizationDeniedException;
 import org.springframework.http.ResponseEntity;
 import org.springframework.validation.FieldError;
 import org.springframework.web.bind.MethodArgumentNotValidException;
@@ -51,6 +53,17 @@ public class GlobalExceptionHandler {
 
         return ResponseEntity.badRequest()
             .body(ApiResponse.failure(ErrorResponse.from(ErrorCode.COMMON_VALIDATION_ERROR, message)));
+    }
+
+    @ExceptionHandler({
+        AccessDeniedException.class,
+        AuthorizationDeniedException.class
+    })
+    public ResponseEntity<ApiResponse<Void>> handleAccessDeniedException(Exception exception) {
+        return ResponseEntity.status(ErrorCode.AUTH_FORBIDDEN.getStatus())
+            .body(ApiResponse.failure(
+                ErrorResponse.from(ErrorCode.AUTH_FORBIDDEN, ErrorCode.AUTH_FORBIDDEN.getMessage())
+            ));
     }
 
     @ExceptionHandler(Exception.class)
