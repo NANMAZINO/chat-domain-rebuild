@@ -34,7 +34,7 @@ class UserControllerTest extends IntegrationTestSupport {
 
     @BeforeEach
     void setUp() {
-        userRepository.deleteAll();
+        userRepository.deleteAllInBatch();
     }
 
     @Test

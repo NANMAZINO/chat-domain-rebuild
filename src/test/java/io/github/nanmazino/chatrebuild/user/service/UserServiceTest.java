@@ -10,6 +10,7 @@ import io.github.nanmazino.chatrebuild.user.entity.User;
 import io.github.nanmazino.chatrebuild.user.exception.DuplicateEmailException;
 import io.github.nanmazino.chatrebuild.user.exception.DuplicateNicknameException;
 import io.github.nanmazino.chatrebuild.user.repository.UserRepository;
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -31,6 +32,11 @@ class UserServiceTest extends IntegrationTestSupport {
 
     @Autowired
     private PasswordEncoder passwordEncoder;
+
+    @BeforeEach
+    void setUp() {
+        userRepository.deleteAllInBatch();
+    }
 
     @Test
     @DisplayName("회원가입에 성공하면 사용자 정보를 저장하고 응답을 반환한다")
