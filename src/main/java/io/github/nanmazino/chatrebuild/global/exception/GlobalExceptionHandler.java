@@ -5,13 +5,16 @@ import io.github.nanmazino.chatrebuild.global.response.ErrorResponse;
 import jakarta.validation.ConstraintViolationException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.context.MessageSourceResolvable;
 import org.springframework.security.access.AccessDeniedException;
 import org.springframework.security.authorization.AuthorizationDeniedException;
 import org.springframework.http.ResponseEntity;
 import org.springframework.validation.FieldError;
-import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
+import org.springframework.web.bind.MethodArgumentNotValidException;
+import org.springframework.web.method.annotation.HandlerMethodValidationException;
+import org.springframework.web.method.annotation.MethodArgumentTypeMismatchException;
 
 @RestControllerAdvice
 public class GlobalExceptionHandler {
@@ -37,8 +40,22 @@ public class GlobalExceptionHandler {
             .map(FieldError::getDefaultMessage)
             .orElse(ErrorCode.COMMON_VALIDATION_ERROR.getMessage());
 
-        return ResponseEntity.badRequest()
-            .body(ApiResponse.failure(ErrorResponse.from(ErrorCode.COMMON_VALIDATION_ERROR, message)));
+        return buildValidationErrorResponse(message);
+    }
+
+    @ExceptionHandler(HandlerMethodValidationException.class)
+    public ResponseEntity<ApiResponse<Void>> handleHandlerMethodValidationException(
+        HandlerMethodValidationException exception
+    ) {
+        String message = exception.getParameterValidationResults()
+            .stream()
+            .flatMap(result -> result.getResolvableErrors().stream())
+            .map(MessageSourceResolvable::getDefaultMessage)
+            .filter(defaultMessage -> defaultMessage != null && !defaultMessage.isBlank())
+            .findFirst()
+            .orElse(ErrorCode.COMMON_VALIDATION_ERROR.getMessage());
+
+        return buildValidationErrorResponse(message);
     }
 
     @ExceptionHandler(ConstraintViolationException.class)
@@ -51,8 +68,16 @@ public class GlobalExceptionHandler {
             .map(violation -> violation.getMessage())
             .orElse(ErrorCode.COMMON_VALIDATION_ERROR.getMessage());
 
-        return ResponseEntity.badRequest()
-            .body(ApiResponse.failure(ErrorResponse.from(ErrorCode.COMMON_VALIDATION_ERROR, message)));
+        return buildValidationErrorResponse(message);
+    }
+
+    @ExceptionHandler(MethodArgumentTypeMismatchException.class)
+    public ResponseEntity<ApiResponse<Void>> handleMethodArgumentTypeMismatchException(
+        MethodArgumentTypeMismatchException exception
+    ) {
+        String message = exception.getName() + " 값이 올바르지 않습니다.";
+
+        return buildValidationErrorResponse(message);
     }
 
     @ExceptionHandler({
@@ -74,5 +99,10 @@ public class GlobalExceptionHandler {
             .body(ApiResponse.failure(
                 ErrorResponse.from(ErrorCode.INTERNAL_SERVER_ERROR, ErrorCode.INTERNAL_SERVER_ERROR.getMessage())
             ));
+    }
+
+    private ResponseEntity<ApiResponse<Void>> buildValidationErrorResponse(String message) {
+        return ResponseEntity.badRequest()
+            .body(ApiResponse.failure(ErrorResponse.from(ErrorCode.COMMON_VALIDATION_ERROR, message)));
     }
 }
