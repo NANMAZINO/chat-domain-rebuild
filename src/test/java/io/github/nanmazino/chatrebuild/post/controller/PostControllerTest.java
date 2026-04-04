@@ -14,6 +14,9 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 import io.github.nanmazino.chatrebuild.chat.entity.ChatRoom;
+import io.github.nanmazino.chatrebuild.chat.entity.ChatRoomMember;
+import io.github.nanmazino.chatrebuild.chat.entity.ChatRoomMemberStatus;
+import io.github.nanmazino.chatrebuild.chat.repository.ChatRoomMemberRepository;
 import io.github.nanmazino.chatrebuild.chat.repository.ChatRoomRepository;
 import io.github.nanmazino.chatrebuild.global.security.JwtTokenProvider;
 import io.github.nanmazino.chatrebuild.post.entity.Post;
@@ -53,6 +56,9 @@ class PostControllerTest extends IntegrationTestSupport {
     private ChatRoomRepository chatRoomRepository;
 
     @Autowired
+    private ChatRoomMemberRepository chatRoomMemberRepository;
+
+    @Autowired
     private PasswordEncoder passwordEncoder;
 
     @Autowired
@@ -63,6 +69,7 @@ class PostControllerTest extends IntegrationTestSupport {
 
     @AfterEach
     void tearDown() {
+        chatRoomMemberRepository.deleteAllInBatch();
         chatRoomRepository.deleteAllInBatch();
         postRepository.deleteAllInBatch();
         userRepository.deleteAllInBatch();
@@ -110,13 +117,21 @@ class PostControllerTest extends IntegrationTestSupport {
         Post savedPost = postRepository.findAll().get(0);
         ChatRoom savedChatRoom = chatRoomRepository.findByPostId(savedPost.getId())
             .orElseThrow(() -> new AssertionError("게시글 생성 후 채팅방이 함께 생성되어야 합니다."));
+        ChatRoomMember savedMember = chatRoomMemberRepository
+            .findByRoomIdAndUserId(savedChatRoom.getId(), author.getId())
+            .orElseThrow(() -> new AssertionError("게시글 작성자가 최초 채팅방 멤버로 저장되어야 합니다."));
 
         assertNotNull(savedChatRoom.getId());
         assertEquals(savedPost.getId(), savedChatRoom.getPost().getId());
-        assertEquals(0, savedChatRoom.getMemberCount());
+        assertEquals(1, savedChatRoom.getMemberCount());
         assertNull(savedChatRoom.getLastMessageId());
         assertNull(savedChatRoom.getLastMessagePreview());
         assertNull(savedChatRoom.getLastMessageAt());
+        assertEquals(ChatRoomMemberStatus.ACTIVE, savedMember.getStatus());
+        assertNotNull(savedMember.getJoinedAt());
+        assertNull(savedMember.getLeftAt());
+        assertNull(savedMember.getLastReadMessageId());
+        assertNull(savedMember.getLastReadAt());
     }
 
     @Test

@@ -52,4 +52,8 @@ public class ChatRoom extends BaseTimeEntity {
         this.post = post;
         this.memberCount = 0;
     }
+
+    public void increaseMemberCount() {
+        this.memberCount++;
+    }
 }

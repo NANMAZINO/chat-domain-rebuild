@@ -292,27 +292,27 @@
 - 게시글 작성자를 최초 채팅방 멤버로 등록한다.
 
 ## 작업
-- [ ] ChatRoomMember 엔티티 작성
-  - [ ] roomId
-  - [ ] userId
-  - [ ] status(ACTIVE, LEFT)
-  - [ ] lastReadMessageId
-  - [ ] lastReadAt
-- [ ] ChatRoomMemberRepository 작성
-- [ ] `(roomId, userId)` unique 제약 반영
-- [ ] `joinedAt`, `leftAt` 컬럼 반영
-- [ ] 게시글 생성 시 작성자 멤버 등록
-- [ ] memberCount 증가
+- [x] ChatRoomMember 엔티티 작성
+  - [x] roomId
+  - [x] userId
+  - [x] status(ACTIVE, LEFT)
+  - [x] lastReadMessageId
+  - [x] lastReadAt
+- [x] ChatRoomMemberRepository 작성
+- [x] `(roomId, userId)` unique 제약 반영
+- [x] `joinedAt`, `leftAt` 컬럼 반영
+- [x] 게시글 생성 시 작성자 멤버 등록
+- [x] memberCount 증가
 
 ## 테스트
-- [ ] 게시글 작성자 자동 참여 테스트
-- [ ] memberCount = 1 확인
+- [x] 게시글 작성자 자동 참여 테스트
+- [x] memberCount = 1 확인
 
 ## 완료 기준
-- [ ] 게시글 생성 후 작성자가 채팅방 멤버가 된다
+- [x] 게시글 생성 후 작성자가 채팅방 멤버가 된다
 
 ## 선행 이슈
-- [ ] Issue 06
+- [x] Issue 06
 ```
 
 ---
@@ -343,7 +343,7 @@
 - [ ] 참여 API가 게시글 상태와 멤버십 정책을 함께 검증한다
 
 ## 선행 이슈
-- [ ] Issue 07
+- [x] Issue 07
 ```
 
 ### Issue 09. 나가기 및 LEFT -> ACTIVE 복구 정책 구현
