@@ -1,6 +1,9 @@
 package io.github.nanmazino.chatrebuild.post.service;
 
 import io.github.nanmazino.chatrebuild.chat.entity.ChatRoom;
+import io.github.nanmazino.chatrebuild.chat.entity.ChatRoomMember;
+import io.github.nanmazino.chatrebuild.chat.entity.ChatRoomMemberStatus;
+import io.github.nanmazino.chatrebuild.chat.repository.ChatRoomMemberRepository;
 import io.github.nanmazino.chatrebuild.chat.repository.ChatRoomRepository;
 import io.github.nanmazino.chatrebuild.post.dto.request.CreatePostRequest;
 import io.github.nanmazino.chatrebuild.post.dto.request.UpdatePostRequest;
@@ -18,6 +21,7 @@ import io.github.nanmazino.chatrebuild.post.exception.PostNotFoundException;
 import io.github.nanmazino.chatrebuild.post.repository.PostRepository;
 import io.github.nanmazino.chatrebuild.user.entity.User;
 import io.github.nanmazino.chatrebuild.user.repository.UserRepository;
+import java.time.LocalDateTime;
 import java.util.Collections;
 import java.util.List;
 import lombok.RequiredArgsConstructor;
@@ -38,6 +42,7 @@ public class PostService {
 
     private final PostRepository postRepository;
     private final ChatRoomRepository chatRoomRepository;
+    private final ChatRoomMemberRepository chatRoomMemberRepository;
     private final UserRepository userRepository;
 
     @Transactional
@@ -55,6 +60,13 @@ public class PostService {
 
         Post savedPost = postRepository.save(post);
         ChatRoom savedChatRoom = chatRoomRepository.save(new ChatRoom(savedPost));
+        chatRoomMemberRepository.save(new ChatRoomMember(
+            savedChatRoom,
+            author,
+            ChatRoomMemberStatus.ACTIVE,
+            LocalDateTime.now()
+        ));
+        savedChatRoom.increaseMemberCount();
 
         return new CreatePostResponse(
             savedPost.getId(),
