@@ -326,21 +326,21 @@
 - 게시글 참여 시 채팅방에도 참여하게 한다.
 
 ## 작업
-- [ ] POST /api/posts/{postId}/join 구현
-- [ ] 게시글 참여 = 채팅방 참여 로직 구현
-- [ ] 중복 참여 방지 처리
-- [ ] ACTIVE 멤버 중복 참여는 `CHAT_MEMBER_ALREADY_ACTIVE`로 처리
-- [ ] `OPEN` 상태 게시글만 참여 가능하도록 처리
-- [ ] `CLOSED` 상태는 `POST_ALREADY_CLOSED`, `DELETED` 상태는 `POST_NOT_FOUND`로 참여 차단
+- [x] POST /api/posts/{postId}/join 구현
+- [x] 게시글 참여 = 채팅방 참여 로직 구현
+- [x] 중복 참여 방지 처리
+- [x] ACTIVE 멤버 중복 참여는 `CHAT_MEMBER_ALREADY_ACTIVE`로 처리
+- [x] `OPEN` 상태 게시글만 참여 가능하도록 처리
+- [x] `CLOSED` 상태는 `POST_ALREADY_CLOSED`, `DELETED` 상태는 `POST_NOT_FOUND`로 참여 차단
 
 ## 테스트
-- [ ] 참여 성공 테스트
-- [ ] 중복 참여 처리 테스트
-- [ ] CLOSED 게시글 참여 실패 테스트
-- [ ] DELETED 게시글 참여 실패 테스트
+- [x] 참여 성공 테스트
+- [x] 중복 참여 처리 테스트
+- [x] CLOSED 게시글 참여 실패 테스트
+- [x] DELETED 게시글 참여 실패 테스트
 
 ## 완료 기준
-- [ ] 참여 API가 게시글 상태와 멤버십 정책을 함께 검증한다
+- [x] 참여 API가 게시글 상태와 멤버십 정책을 함께 검증한다
 
 ## 선행 이슈
 - [x] Issue 07
@@ -355,20 +355,20 @@
 ## 작업
 - [ ] POST /api/posts/{postId}/leave 구현
 - [ ] leave 시 ACTIVE -> LEFT 처리
-- [ ] 재참여 시 LEFT -> ACTIVE 복구
+- [x] 재참여 시 LEFT -> ACTIVE 복구
 - [ ] joinedAt / leftAt 처리
 - [ ] 비참여자 leave 요청 차단
 
 ## 테스트
 - [ ] 나가기 테스트
-- [ ] 재참여 복구 테스트
+- [x] 재참여 복구 테스트
 - [ ] 비참여자 leave 실패 테스트
 
 ## 완료 기준
 - [ ] row 삭제 없이 상태 전환이 동작한다
 
 ## 선행 이슈
-- [ ] Issue 08
+- [x] Issue 08
 ```
 
 ### Issue 10. 정원 제한 및 membership 검증 구현

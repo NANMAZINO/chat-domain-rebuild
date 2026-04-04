@@ -219,6 +219,118 @@ class PostControllerTest extends IntegrationTestSupport {
     }
 
     @Test
+    @DisplayName("게시글 참여 성공 시 채팅방 ACTIVE 멤버로 등록된다")
+    void joinPostSuccess() throws Exception {
+        Post savedPost = createPostWithChatRoomAndAuthorMember("join-title", "content", PostStatus.OPEN);
+        String accessToken = jwtTokenProvider.generateAccessToken(otherUser.getId(), otherUser.getEmail());
+
+        mockMvc.perform(post("/api/posts/" + savedPost.getId() + "/join")
+                .header(HttpHeaders.AUTHORIZATION, "Bearer " + accessToken))
+            .andExpect(status().isOk())
+            .andExpect(jsonPath("$.success").value(true))
+            .andExpect(jsonPath("$.data.postId").value(savedPost.getId()))
+            .andExpect(jsonPath("$.data.chatRoomId").isNumber())
+            .andExpect(jsonPath("$.data.memberStatus").value("ACTIVE"))
+            .andExpect(jsonPath("$.data.memberCount").value(2))
+            .andExpect(jsonPath("$.data.joinedAt").isString())
+            .andExpect(jsonPath("$.error").value(nullValue()));
+
+        ChatRoom chatRoom = chatRoomRepository.findByPostId(savedPost.getId())
+            .orElseThrow(() -> new AssertionError("게시글 참여 시 연결된 채팅방이 있어야 합니다."));
+        ChatRoomMember joinedMember = chatRoomMemberRepository.findByRoomIdAndUserId(chatRoom.getId(), otherUser.getId())
+            .orElseThrow(() -> new AssertionError("참여한 사용자가 채팅방 멤버로 저장되어야 합니다."));
+
+        assertEquals(2, chatRoom.getMemberCount());
+        assertEquals(ChatRoomMemberStatus.ACTIVE, joinedMember.getStatus());
+        assertNotNull(joinedMember.getJoinedAt());
+        assertNull(joinedMember.getLeftAt());
+    }
+
+    @Test
+    @DisplayName("이미 ACTIVE 멤버인 사용자가 다시 참여하면 409를 반환한다")
+    void joinPostFailsWhenAlreadyActive() throws Exception {
+        Post savedPost = createPostWithChatRoomAndAuthorMember("join-title", "content", PostStatus.OPEN);
+        String accessToken = jwtTokenProvider.generateAccessToken(author.getId(), author.getEmail());
+
+        mockMvc.perform(post("/api/posts/" + savedPost.getId() + "/join")
+                .header(HttpHeaders.AUTHORIZATION, "Bearer " + accessToken))
+            .andExpect(status().isConflict())
+            .andExpect(jsonPath("$.success").value(false))
+            .andExpect(jsonPath("$.error.code").value("CHAT_MEMBER_ALREADY_ACTIVE"));
+    }
+
+    @Test
+    @DisplayName("모집 종료된 게시글은 참여 시 409와 POST_ALREADY_CLOSED를 반환한다")
+    void joinPostFailsWhenClosed() throws Exception {
+        Post savedPost = createPostWithChatRoomAndAuthorMember("join-title", "content", PostStatus.CLOSED);
+        String accessToken = jwtTokenProvider.generateAccessToken(otherUser.getId(), otherUser.getEmail());
+
+        mockMvc.perform(post("/api/posts/" + savedPost.getId() + "/join")
+                .header(HttpHeaders.AUTHORIZATION, "Bearer " + accessToken))
+            .andExpect(status().isConflict())
+            .andExpect(jsonPath("$.success").value(false))
+            .andExpect(jsonPath("$.error.code").value("POST_ALREADY_CLOSED"));
+    }
+
+    @Test
+    @DisplayName("삭제된 게시글은 참여 시 404와 POST_NOT_FOUND를 반환한다")
+    void joinPostFailsWhenDeleted() throws Exception {
+        Post savedPost = createPostWithChatRoomAndAuthorMember("join-title", "content", PostStatus.DELETED);
+        String accessToken = jwtTokenProvider.generateAccessToken(otherUser.getId(), otherUser.getEmail());
+
+        mockMvc.perform(post("/api/posts/" + savedPost.getId() + "/join")
+                .header(HttpHeaders.AUTHORIZATION, "Bearer " + accessToken))
+            .andExpect(status().isNotFound())
+            .andExpect(jsonPath("$.success").value(false))
+            .andExpect(jsonPath("$.error.code").value("POST_NOT_FOUND"));
+    }
+
+    @Test
+    @DisplayName("게시글 참여는 인증이 없으면 401을 반환한다")
+    void joinPostUnauthorizedWithoutToken() throws Exception {
+        Post savedPost = createPostWithChatRoomAndAuthorMember("join-title", "content", PostStatus.OPEN);
+
+        mockMvc.perform(post("/api/posts/" + savedPost.getId() + "/join"))
+            .andExpect(status().isUnauthorized())
+            .andExpect(jsonPath("$.success").value(false))
+            .andExpect(jsonPath("$.error.code").value("AUTH_UNAUTHORIZED"));
+    }
+
+    @Test
+    @DisplayName("LEFT 멤버가 다시 참여하면 기존 row를 ACTIVE로 복구한다")
+    void joinPostRestoresLeftMember() throws Exception {
+        Post savedPost = createPostWithChatRoomAndAuthorMember("join-title", "content", PostStatus.OPEN);
+        ChatRoom chatRoom = chatRoomRepository.findByPostId(savedPost.getId())
+            .orElseThrow(() -> new AssertionError("게시글에 연결된 채팅방이 있어야 합니다."));
+        ChatRoomMember leftMember = chatRoomMemberRepository.save(new ChatRoomMember(
+            chatRoom,
+            otherUser,
+            ChatRoomMemberStatus.LEFT,
+            savedPost.getCreatedAt().minusDays(1)
+        ));
+        String accessToken = jwtTokenProvider.generateAccessToken(otherUser.getId(), otherUser.getEmail());
+
+        mockMvc.perform(post("/api/posts/" + savedPost.getId() + "/join")
+                .header(HttpHeaders.AUTHORIZATION, "Bearer " + accessToken))
+            .andExpect(status().isOk())
+            .andExpect(jsonPath("$.success").value(true))
+            .andExpect(jsonPath("$.data.memberStatus").value("ACTIVE"))
+            .andExpect(jsonPath("$.data.memberCount").value(2))
+            .andExpect(jsonPath("$.data.joinedAt").isString());
+
+        ChatRoomMember restoredMember = chatRoomMemberRepository.findById(leftMember.getId())
+            .orElseThrow(() -> new AssertionError("기존 LEFT 멤버 row가 유지되어야 합니다."));
+
+        assertEquals(leftMember.getId(), restoredMember.getId());
+        assertEquals(ChatRoomMemberStatus.ACTIVE, restoredMember.getStatus());
+        assertNotNull(restoredMember.getJoinedAt());
+        assertNull(restoredMember.getLeftAt());
+        assertEquals(2, chatRoomRepository.findById(chatRoom.getId())
+            .orElseThrow(() -> new AssertionError("채팅방이 유지되어야 합니다."))
+            .getMemberCount());
+    }
+
+    @Test
     @DisplayName("게시글 수정은 작성자만 가능하다")
     void updatePostForbiddenForNonAuthor() throws Exception {
         Post savedPost = postRepository.save(new Post(author, "before-title", "before-content", 4, PostStatus.OPEN));
@@ -303,6 +415,20 @@ class PostControllerTest extends IntegrationTestSupport {
     private Post createPostWithChatRoom(String title, String content, PostStatus status) {
         Post post = postRepository.save(new Post(author, title, content, 4, status));
         chatRoomRepository.save(new ChatRoom(post));
+        return post;
+    }
+
+    private Post createPostWithChatRoomAndAuthorMember(String title, String content, PostStatus status) {
+        Post post = postRepository.save(new Post(author, title, content, 4, status));
+        ChatRoom chatRoom = chatRoomRepository.save(new ChatRoom(post));
+        chatRoomMemberRepository.save(new ChatRoomMember(
+            chatRoom,
+            author,
+            ChatRoomMemberStatus.ACTIVE,
+            post.getCreatedAt()
+        ));
+        chatRoom.increaseMemberCount();
+        chatRoomRepository.saveAndFlush(chatRoom);
         return post;
     }
 }
