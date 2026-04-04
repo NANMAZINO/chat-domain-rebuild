@@ -1,5 +1,7 @@
 spring:
   application:
     name: chat-rebuild
+  config:
+    import: optional:file:.env[.properties]
   profiles:
     default: local
