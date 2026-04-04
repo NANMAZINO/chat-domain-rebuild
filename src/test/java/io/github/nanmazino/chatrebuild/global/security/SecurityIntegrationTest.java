@@ -13,6 +13,9 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 import io.jsonwebtoken.Jwts;
 import io.jsonwebtoken.io.Decoders;
 import io.jsonwebtoken.security.Keys;
+import io.github.nanmazino.chatrebuild.post.entity.Post;
+import io.github.nanmazino.chatrebuild.post.entity.PostStatus;
+import io.github.nanmazino.chatrebuild.post.repository.PostRepository;
 import java.time.Instant;
 import java.util.Date;
 import javax.crypto.SecretKey;
@@ -46,6 +49,9 @@ class SecurityIntegrationTest extends IntegrationTestSupport {
     private UserRepository userRepository;
 
     @Autowired
+    private PostRepository postRepository;
+
+    @Autowired
     private PasswordEncoder passwordEncoder;
 
     @Autowired
@@ -58,6 +64,7 @@ class SecurityIntegrationTest extends IntegrationTestSupport {
 
     @BeforeEach
     void setUp() {
+        postRepository.deleteAllInBatch();
         userRepository.deleteAllInBatch();
         savedUser = userRepository.save(new User(
             "secure-user@example.com",
@@ -129,17 +136,23 @@ class SecurityIntegrationTest extends IntegrationTestSupport {
     @Test
     @DisplayName("게시글 목록 조회는 인증 없이 접근할 수 있다")
     void postListEndpointIsPublic() throws Exception {
+        postRepository.save(new Post(savedUser, "public-post", "public-content", 4, PostStatus.OPEN));
+
         mockMvc.perform(get("/api/posts"))
             .andExpect(status().isOk())
-            .andExpect(jsonPath("$.postCount").value(0));
+            .andExpect(jsonPath("$.success").value(true))
+            .andExpect(jsonPath("$.data.items[0].title").value("public-post"));
     }
 
     @Test
     @DisplayName("게시글 상세 조회는 인증 없이 접근할 수 있다")
     void postDetailEndpointIsPublic() throws Exception {
-        mockMvc.perform(get("/api/posts/1"))
+        Post savedPost = postRepository.save(new Post(savedUser, "detail-post", "detail-content", 4, PostStatus.OPEN));
+
+        mockMvc.perform(get("/api/posts/" + savedPost.getId()))
             .andExpect(status().isOk())
-            .andExpect(jsonPath("$.postId").value(1L));
+            .andExpect(jsonPath("$.success").value(true))
+            .andExpect(jsonPath("$.data.postId").value(savedPost.getId()));
     }
 
     @Test
@@ -158,24 +171,28 @@ class SecurityIntegrationTest extends IntegrationTestSupport {
     @DisplayName("유효한 JWT가 있으면 게시글 모집 종료에 접근할 수 있다")
     void postCloseEndpointAllowsAuthenticatedUser() throws Exception {
         String accessToken = jwtTokenProvider.generateAccessToken(savedUser.getId(), savedUser.getEmail());
+        Post savedPost = postRepository.save(new Post(savedUser, "close-post", "close-content", 4, PostStatus.OPEN));
 
-        mockMvc.perform(patch("/api/posts/1/close")
+        mockMvc.perform(patch("/api/posts/" + savedPost.getId() + "/close")
                 .header(HttpHeaders.AUTHORIZATION, "Bearer " + accessToken))
             .andExpect(status().isOk())
-            .andExpect(jsonPath("$.postId").value(1L))
-            .andExpect(jsonPath("$.closedBy").value(savedUser.getId()));
+            .andExpect(jsonPath("$.success").value(true))
+            .andExpect(jsonPath("$.data.postId").value(savedPost.getId()))
+            .andExpect(jsonPath("$.data.status").value("CLOSED"));
     }
 
     @Test
     @DisplayName("유효한 JWT가 있으면 게시글 삭제에 접근할 수 있다")
     void postDeleteEndpointAllowsAuthenticatedUser() throws Exception {
         String accessToken = jwtTokenProvider.generateAccessToken(savedUser.getId(), savedUser.getEmail());
+        Post savedPost = postRepository.save(new Post(savedUser, "delete-post", "delete-content", 4, PostStatus.OPEN));
 
-        mockMvc.perform(delete("/api/posts/1")
+        mockMvc.perform(delete("/api/posts/" + savedPost.getId())
                 .header(HttpHeaders.AUTHORIZATION, "Bearer " + accessToken))
             .andExpect(status().isOk())
-            .andExpect(jsonPath("$.postId").value(1L))
-            .andExpect(jsonPath("$.deletedBy").value(savedUser.getId()));
+            .andExpect(jsonPath("$.success").value(true))
+            .andExpect(jsonPath("$.data.postId").value(savedPost.getId()))
+            .andExpect(jsonPath("$.data.status").value("DELETED"));
     }
 
     @Test
