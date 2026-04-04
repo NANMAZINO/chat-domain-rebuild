@@ -14,10 +14,13 @@ import io.github.nanmazino.chatrebuild.post.service.PostService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
+import jakarta.validation.constraints.Positive;
+import jakarta.validation.constraints.PositiveOrZero;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
+import org.springframework.validation.annotation.Validated;
 import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PatchMapping;
@@ -31,6 +34,7 @@ import org.springframework.web.bind.annotation.RestController;
 @RestController
 @RequestMapping("/api/posts")
 @RequiredArgsConstructor
+@Validated
 @Tag(name = "Post", description = "게시글 관련 API")
 public class PostController {
 
@@ -51,8 +55,12 @@ public class PostController {
     @GetMapping
     @Operation(summary = "게시글 목록 조회", description = "공개 게시글 목록을 조회합니다.")
     public ResponseEntity<ApiResponse<PostListResponse>> getPosts(
-        @RequestParam(required = false) Integer page,
-        @RequestParam(required = false) Integer size,
+        @RequestParam(required = false)
+        @PositiveOrZero(message = "page는 0 이상이어야 합니다.")
+        Integer page,
+        @RequestParam(required = false)
+        @Positive(message = "size는 1 이상이어야 합니다.")
+        Integer size,
         @RequestParam(required = false) PostStatus status,
         @RequestParam(required = false) String keyword
     ) {

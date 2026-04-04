@@ -121,6 +121,39 @@ class PostControllerTest extends IntegrationTestSupport {
     }
 
     @Test
+    @DisplayName("게시글 목록 조회에서 page가 음수면 400과 공통 에러 응답을 반환한다")
+    void getPostsRejectsNegativePage() throws Exception {
+        mockMvc.perform(get("/api/posts")
+                .param("page", "-1"))
+            .andExpect(status().isBadRequest())
+            .andExpect(jsonPath("$.success").value(false))
+            .andExpect(jsonPath("$.error.code").value("COMMON_VALIDATION_ERROR"))
+            .andExpect(jsonPath("$.error.message").value("page는 0 이상이어야 합니다."));
+    }
+
+    @Test
+    @DisplayName("게시글 목록 조회에서 size가 0이면 400과 공통 에러 응답을 반환한다")
+    void getPostsRejectsNonPositiveSize() throws Exception {
+        mockMvc.perform(get("/api/posts")
+                .param("size", "0"))
+            .andExpect(status().isBadRequest())
+            .andExpect(jsonPath("$.success").value(false))
+            .andExpect(jsonPath("$.error.code").value("COMMON_VALIDATION_ERROR"))
+            .andExpect(jsonPath("$.error.message").value("size는 1 이상이어야 합니다."));
+    }
+
+    @Test
+    @DisplayName("게시글 목록 조회에서 잘못된 status 값은 400과 공통 에러 응답을 반환한다")
+    void getPostsRejectsInvalidStatus() throws Exception {
+        mockMvc.perform(get("/api/posts")
+                .param("status", "INVALID"))
+            .andExpect(status().isBadRequest())
+            .andExpect(jsonPath("$.success").value(false))
+            .andExpect(jsonPath("$.error.code").value("COMMON_VALIDATION_ERROR"))
+            .andExpect(jsonPath("$.error.message").value("status 값이 올바르지 않습니다."));
+    }
+
+    @Test
     @DisplayName("게시글 상세 조회는 비회원도 가능하다")
     void getPostAsGuestSuccess() throws Exception {
         Post savedPost = postRepository.save(new Post(author, "detail-title", "detail-content", 4, PostStatus.OPEN));
