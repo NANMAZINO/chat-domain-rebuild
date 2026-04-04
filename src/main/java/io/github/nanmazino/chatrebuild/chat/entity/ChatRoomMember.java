@@ -80,4 +80,9 @@ public class ChatRoomMember extends BaseTimeEntity {
         this.joinedAt = joinedAt;
         this.leftAt = null;
     }
+
+    public void leave(LocalDateTime leftAt) {
+        this.status = ChatRoomMemberStatus.LEFT;
+        this.leftAt = leftAt;
+    }
 }

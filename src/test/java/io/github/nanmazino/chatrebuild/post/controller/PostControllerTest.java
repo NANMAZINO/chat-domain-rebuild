@@ -331,6 +331,99 @@ class PostControllerTest extends IntegrationTestSupport {
     }
 
     @Test
+    @DisplayName("게시글 나가기 성공 시 멤버 상태를 LEFT로 변경하고 memberCount를 감소시킨다")
+    void leavePostSuccess() throws Exception {
+        Post savedPost = createPostWithChatRoomAndAuthorMember("leave-title", "content", PostStatus.OPEN);
+        ChatRoom chatRoom = chatRoomRepository.findByPostId(savedPost.getId())
+            .orElseThrow(() -> new AssertionError("게시글에 연결된 채팅방이 있어야 합니다."));
+        chatRoomMemberRepository.save(new ChatRoomMember(
+            chatRoom,
+            otherUser,
+            ChatRoomMemberStatus.ACTIVE,
+            savedPost.getCreatedAt()
+        ));
+        chatRoom.increaseMemberCount();
+        chatRoomRepository.saveAndFlush(chatRoom);
+        String accessToken = jwtTokenProvider.generateAccessToken(otherUser.getId(), otherUser.getEmail());
+
+        mockMvc.perform(post("/api/posts/" + savedPost.getId() + "/leave")
+                .header(HttpHeaders.AUTHORIZATION, "Bearer " + accessToken))
+            .andExpect(status().isOk())
+            .andExpect(jsonPath("$.success").value(true))
+            .andExpect(jsonPath("$.data.postId").value(savedPost.getId()))
+            .andExpect(jsonPath("$.data.chatRoomId").value(chatRoom.getId()))
+            .andExpect(jsonPath("$.data.memberStatus").value("LEFT"))
+            .andExpect(jsonPath("$.data.memberCount").value(1))
+            .andExpect(jsonPath("$.data.leftAt").isString());
+
+        ChatRoomMember leftMember = chatRoomMemberRepository.findByRoomIdAndUserId(chatRoom.getId(), otherUser.getId())
+            .orElseThrow(() -> new AssertionError("나간 사용자의 멤버 row가 유지되어야 합니다."));
+
+        assertEquals(ChatRoomMemberStatus.LEFT, leftMember.getStatus());
+        assertNotNull(leftMember.getLeftAt());
+        assertEquals(1, chatRoomRepository.findById(chatRoom.getId())
+            .orElseThrow(() -> new AssertionError("채팅방이 유지되어야 합니다."))
+            .getMemberCount());
+    }
+
+    @Test
+    @DisplayName("비참여자가 게시글 나가기를 요청하면 404와 CHAT_MEMBER_NOT_FOUND를 반환한다")
+    void leavePostFailsWhenMemberDoesNotExist() throws Exception {
+        Post savedPost = createPostWithChatRoomAndAuthorMember("leave-title", "content", PostStatus.OPEN);
+        String accessToken = jwtTokenProvider.generateAccessToken(otherUser.getId(), otherUser.getEmail());
+
+        mockMvc.perform(post("/api/posts/" + savedPost.getId() + "/leave")
+                .header(HttpHeaders.AUTHORIZATION, "Bearer " + accessToken))
+            .andExpect(status().isNotFound())
+            .andExpect(jsonPath("$.success").value(false))
+            .andExpect(jsonPath("$.error.code").value("CHAT_MEMBER_NOT_FOUND"));
+    }
+
+    @Test
+    @DisplayName("정원이 가득 찬 게시글은 신규 참여 시 409와 CHAT_ROOM_FULL을 반환한다")
+    void joinPostFailsWhenRoomIsFull() throws Exception {
+        Post savedPost = createPostWithChatRoomAndAuthorMember("join-title", "content", PostStatus.OPEN);
+        ChatRoom chatRoom = chatRoomRepository.findByPostId(savedPost.getId())
+            .orElseThrow(() -> new AssertionError("게시글에 연결된 채팅방이 있어야 합니다."));
+        Post fullPost = postRepository.findById(savedPost.getId())
+            .orElseThrow(() -> new AssertionError("게시글이 있어야 합니다."));
+        fullPost.update(fullPost.getTitle(), fullPost.getContent(), 1);
+        postRepository.saveAndFlush(fullPost);
+        String accessToken = jwtTokenProvider.generateAccessToken(otherUser.getId(), otherUser.getEmail());
+
+        mockMvc.perform(post("/api/posts/" + savedPost.getId() + "/join")
+                .header(HttpHeaders.AUTHORIZATION, "Bearer " + accessToken))
+            .andExpect(status().isConflict())
+            .andExpect(jsonPath("$.success").value(false))
+            .andExpect(jsonPath("$.error.code").value("CHAT_ROOM_FULL"));
+    }
+
+    @Test
+    @DisplayName("정원이 가득 찬 게시글은 LEFT 멤버 재참여도 409와 CHAT_ROOM_FULL을 반환한다")
+    void joinPostFailsWhenRoomIsFullOnRejoin() throws Exception {
+        Post savedPost = createPostWithChatRoomAndAuthorMember("join-title", "content", PostStatus.OPEN);
+        ChatRoom chatRoom = chatRoomRepository.findByPostId(savedPost.getId())
+            .orElseThrow(() -> new AssertionError("게시글에 연결된 채팅방이 있어야 합니다."));
+        chatRoomMemberRepository.save(new ChatRoomMember(
+            chatRoom,
+            otherUser,
+            ChatRoomMemberStatus.LEFT,
+            savedPost.getCreatedAt().minusDays(1)
+        ));
+        Post fullPost = postRepository.findById(savedPost.getId())
+            .orElseThrow(() -> new AssertionError("게시글이 있어야 합니다."));
+        fullPost.update(fullPost.getTitle(), fullPost.getContent(), 1);
+        postRepository.saveAndFlush(fullPost);
+        String accessToken = jwtTokenProvider.generateAccessToken(otherUser.getId(), otherUser.getEmail());
+
+        mockMvc.perform(post("/api/posts/" + savedPost.getId() + "/join")
+                .header(HttpHeaders.AUTHORIZATION, "Bearer " + accessToken))
+            .andExpect(status().isConflict())
+            .andExpect(jsonPath("$.success").value(false))
+            .andExpect(jsonPath("$.error.code").value("CHAT_ROOM_FULL"));
+    }
+
+    @Test
     @DisplayName("게시글 수정은 작성자만 가능하다")
     void updatePostForbiddenForNonAuthor() throws Exception {
         Post savedPost = postRepository.save(new Post(author, "before-title", "before-content", 4, PostStatus.OPEN));
