@@ -10,6 +10,8 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
+import io.github.nanmazino.chatrebuild.chat.entity.ChatRoom;
+import io.github.nanmazino.chatrebuild.chat.repository.ChatRoomRepository;
 import io.jsonwebtoken.Jwts;
 import io.jsonwebtoken.io.Decoders;
 import io.jsonwebtoken.security.Keys;
@@ -52,6 +54,9 @@ class SecurityIntegrationTest extends IntegrationTestSupport {
     private PostRepository postRepository;
 
     @Autowired
+    private ChatRoomRepository chatRoomRepository;
+
+    @Autowired
     private PasswordEncoder passwordEncoder;
 
     @Autowired
@@ -64,6 +69,7 @@ class SecurityIntegrationTest extends IntegrationTestSupport {
 
     @BeforeEach
     void setUp() {
+        chatRoomRepository.deleteAllInBatch();
         postRepository.deleteAllInBatch();
         userRepository.deleteAllInBatch();
         savedUser = userRepository.save(new User(
@@ -148,11 +154,13 @@ class SecurityIntegrationTest extends IntegrationTestSupport {
     @DisplayName("게시글 상세 조회는 인증 없이 접근할 수 있다")
     void postDetailEndpointIsPublic() throws Exception {
         Post savedPost = postRepository.save(new Post(savedUser, "detail-post", "detail-content", 4, PostStatus.OPEN));
+        chatRoomRepository.save(new ChatRoom(savedPost));
 
         mockMvc.perform(get("/api/posts/" + savedPost.getId()))
             .andExpect(status().isOk())
             .andExpect(jsonPath("$.success").value(true))
-            .andExpect(jsonPath("$.data.postId").value(savedPost.getId()));
+            .andExpect(jsonPath("$.data.postId").value(savedPost.getId()))
+            .andExpect(jsonPath("$.data.chatRoomId").isNumber());
     }
 
     @Test

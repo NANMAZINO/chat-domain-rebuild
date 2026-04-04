@@ -1,5 +1,6 @@
 package io.github.nanmazino.chatrebuild.post.entity;
 
+import io.github.nanmazino.chatrebuild.chat.entity.ChatRoom;
 import io.github.nanmazino.chatrebuild.global.entity.BaseTimeEntity;
 import io.github.nanmazino.chatrebuild.user.entity.User;
 import jakarta.persistence.*;
@@ -37,6 +38,9 @@ public class Post extends BaseTimeEntity {
     @Enumerated(EnumType.STRING)
     @Column(nullable = false, length = 20)
     private PostStatus status;
+
+    @OneToOne(mappedBy = "post", fetch = FetchType.LAZY)
+    private ChatRoom chatRoom;
 
     public Post(User author, String title, String content, int maxParticipants, PostStatus status) {
         this.author = author;

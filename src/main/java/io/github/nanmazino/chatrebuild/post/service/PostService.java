@@ -1,5 +1,7 @@
 package io.github.nanmazino.chatrebuild.post.service;
 
+import io.github.nanmazino.chatrebuild.chat.entity.ChatRoom;
+import io.github.nanmazino.chatrebuild.chat.repository.ChatRoomRepository;
 import io.github.nanmazino.chatrebuild.post.dto.request.CreatePostRequest;
 import io.github.nanmazino.chatrebuild.post.dto.request.UpdatePostRequest;
 import io.github.nanmazino.chatrebuild.post.dto.response.CreatePostResponse;
@@ -35,6 +37,7 @@ public class PostService {
     private static final int DEFAULT_SIZE = 20;
 
     private final PostRepository postRepository;
+    private final ChatRoomRepository chatRoomRepository;
     private final UserRepository userRepository;
 
     @Transactional
@@ -51,9 +54,11 @@ public class PostService {
         );
 
         Post savedPost = postRepository.save(post);
+        ChatRoom savedChatRoom = chatRoomRepository.save(new ChatRoom(savedPost));
 
         return new CreatePostResponse(
             savedPost.getId(),
+            savedChatRoom.getId(),
             savedPost.getTitle(),
             savedPost.getContent(),
             savedPost.getMaxParticipants(),
@@ -117,6 +122,7 @@ public class PostService {
 
         return new PostDetailResponse(
             post.getId(),
+            post.getChatRoom().getId(),
             post.getTitle(),
             post.getContent(),
             post.getMaxParticipants(),
@@ -137,6 +143,7 @@ public class PostService {
 
         return new PostDetailResponse(
             updatedPost.getId(),
+            updatedPost.getChatRoom().getId(),
             updatedPost.getTitle(),
             updatedPost.getContent(),
             updatedPost.getMaxParticipants(),
@@ -196,7 +203,7 @@ public class PostService {
     }
 
     private Post getPostForMutation(Long postId) {
-        return postRepository.findWithAuthorById(postId)
+        return postRepository.findWithAuthorAndChatRoomById(postId)
             .orElseThrow(PostNotFoundException::new);
     }
 

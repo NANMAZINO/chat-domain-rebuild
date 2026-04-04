@@ -2,6 +2,9 @@ package io.github.nanmazino.chatrebuild.post.controller;
 
 import static org.hamcrest.Matchers.containsString;
 import static org.hamcrest.Matchers.nullValue;
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertNotNull;
+import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.delete;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.patch;
@@ -10,6 +13,8 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
+import io.github.nanmazino.chatrebuild.chat.entity.ChatRoom;
+import io.github.nanmazino.chatrebuild.chat.repository.ChatRoomRepository;
 import io.github.nanmazino.chatrebuild.global.security.JwtTokenProvider;
 import io.github.nanmazino.chatrebuild.post.entity.Post;
 import io.github.nanmazino.chatrebuild.post.entity.PostStatus;
@@ -17,6 +22,7 @@ import io.github.nanmazino.chatrebuild.post.repository.PostRepository;
 import io.github.nanmazino.chatrebuild.support.IntegrationTestSupport;
 import io.github.nanmazino.chatrebuild.user.entity.User;
 import io.github.nanmazino.chatrebuild.user.repository.UserRepository;
+import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
@@ -44,6 +50,9 @@ class PostControllerTest extends IntegrationTestSupport {
     private PostRepository postRepository;
 
     @Autowired
+    private ChatRoomRepository chatRoomRepository;
+
+    @Autowired
     private PasswordEncoder passwordEncoder;
 
     @Autowired
@@ -52,11 +61,15 @@ class PostControllerTest extends IntegrationTestSupport {
     private User author;
     private User otherUser;
 
-    @BeforeEach
-    void setUp() {
+    @AfterEach
+    void tearDown() {
+        chatRoomRepository.deleteAllInBatch();
         postRepository.deleteAllInBatch();
         userRepository.deleteAllInBatch();
+    }
 
+    @BeforeEach
+    void setUp() {
         author = userRepository.save(new User(
             "author@example.com",
             passwordEncoder.encode("Password123!"),
@@ -88,10 +101,22 @@ class PostControllerTest extends IntegrationTestSupport {
             .andExpect(status().isCreated())
             .andExpect(jsonPath("$.success").value(true))
             .andExpect(jsonPath("$.data.postId").isNumber())
+            .andExpect(jsonPath("$.data.chatRoomId").isNumber())
             .andExpect(jsonPath("$.data.title").value("강남역 저녁 같이 하실 분"))
             .andExpect(jsonPath("$.data.status").value("OPEN"))
             .andExpect(jsonPath("$.data.author.userId").value(author.getId()))
             .andExpect(jsonPath("$.error").value(nullValue()));
+
+        Post savedPost = postRepository.findAll().get(0);
+        ChatRoom savedChatRoom = chatRoomRepository.findByPostId(savedPost.getId())
+            .orElseThrow(() -> new AssertionError("게시글 생성 후 채팅방이 함께 생성되어야 합니다."));
+
+        assertNotNull(savedChatRoom.getId());
+        assertEquals(savedPost.getId(), savedChatRoom.getPost().getId());
+        assertEquals(0, savedChatRoom.getMemberCount());
+        assertNull(savedChatRoom.getLastMessageId());
+        assertNull(savedChatRoom.getLastMessagePreview());
+        assertNull(savedChatRoom.getLastMessageAt());
     }
 
     @Test
@@ -156,12 +181,13 @@ class PostControllerTest extends IntegrationTestSupport {
     @Test
     @DisplayName("게시글 상세 조회는 비회원도 가능하다")
     void getPostAsGuestSuccess() throws Exception {
-        Post savedPost = postRepository.save(new Post(author, "detail-title", "detail-content", 4, PostStatus.OPEN));
+        Post savedPost = createPostWithChatRoom("detail-title", "detail-content", PostStatus.OPEN);
 
         mockMvc.perform(get("/api/posts/" + savedPost.getId()))
             .andExpect(status().isOk())
             .andExpect(jsonPath("$.success").value(true))
             .andExpect(jsonPath("$.data.postId").value(savedPost.getId()))
+            .andExpect(jsonPath("$.data.chatRoomId").isNumber())
             .andExpect(jsonPath("$.data.author.userId").value(author.getId()))
             .andExpect(jsonPath("$.data.author.nickname").value("author"));
     }
@@ -169,7 +195,7 @@ class PostControllerTest extends IntegrationTestSupport {
     @Test
     @DisplayName("삭제된 게시글 상세 조회는 404와 POST_NOT_FOUND를 반환한다")
     void getDeletedPostFails() throws Exception {
-        Post deletedPost = postRepository.save(new Post(author, "deleted-post", "content", 4, PostStatus.DELETED));
+        Post deletedPost = createPostWithChatRoom("deleted-post", "content", PostStatus.DELETED);
 
         mockMvc.perform(get("/api/posts/" + deletedPost.getId()))
             .andExpect(status().isNotFound())
@@ -257,5 +283,11 @@ class PostControllerTest extends IntegrationTestSupport {
         mockMvc.perform(get("/api/posts/" + savedPost.getId()))
             .andExpect(status().isNotFound())
             .andExpect(jsonPath("$.error.code").value("POST_NOT_FOUND"));
+    }
+
+    private Post createPostWithChatRoom(String title, String content, PostStatus status) {
+        Post post = postRepository.save(new Post(author, title, content, 4, status));
+        chatRoomRepository.save(new ChatRoom(post));
+        return post;
     }
 }
