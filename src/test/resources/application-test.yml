@@ -9,3 +9,7 @@ spring:
     properties:
       hibernate:
         format_sql: false
+
+jwt:
+  secret: "NPRNl36uSQj34LFa6iKKsLOgRriC7S/HPsUIiWVhNP8="
+  access-token-expiration-seconds: 3600
