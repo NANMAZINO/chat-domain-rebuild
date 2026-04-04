@@ -1,5 +1,6 @@
 package io.github.nanmazino.chatrebuild.global.security;
 
+import io.jsonwebtoken.Claims;
 import io.jsonwebtoken.Jwts;
 import io.jsonwebtoken.io.Decoders;
 import io.jsonwebtoken.security.Keys;
@@ -30,5 +31,30 @@ public class JwtTokenProvider {
             .expiration(Date.from(expiresAt))
             .signWith(signingKey)
             .compact();
+    }
+
+    public boolean validateToken(String token) {
+        try {
+            parseClaims(token);
+            return true;
+        } catch (RuntimeException exception) {
+            return false;
+        }
+    }
+
+    public Long getUserId(String token) {
+        return Long.parseLong(parseClaims(token).getSubject());
+    }
+
+    public String getEmail(String token) {
+        return parseClaims(token).get("email", String.class);
+    }
+
+    private Claims parseClaims(String token) {
+        return Jwts.parser()
+            .verifyWith((javax.crypto.SecretKey) signingKey)
+            .build()
+            .parseSignedClaims(token)
+            .getPayload();
     }
 }
