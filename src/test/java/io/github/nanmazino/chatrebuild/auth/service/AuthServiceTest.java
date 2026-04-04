@@ -7,6 +7,7 @@ import io.github.nanmazino.chatrebuild.auth.dto.request.LoginRequest;
 import io.github.nanmazino.chatrebuild.auth.dto.response.LoginResponse;
 import io.github.nanmazino.chatrebuild.auth.exception.InvalidLoginCredentialsException;
 import io.github.nanmazino.chatrebuild.global.security.JwtProperties;
+import io.github.nanmazino.chatrebuild.post.repository.PostRepository;
 import io.github.nanmazino.chatrebuild.support.IntegrationTestSupport;
 import io.github.nanmazino.chatrebuild.user.entity.User;
 import io.github.nanmazino.chatrebuild.user.repository.UserRepository;
@@ -35,6 +36,9 @@ class AuthServiceTest extends IntegrationTestSupport {
     private UserRepository userRepository;
 
     @Autowired
+    private PostRepository postRepository;
+
+    @Autowired
     private PasswordEncoder passwordEncoder;
 
     @Autowired
@@ -42,6 +46,7 @@ class AuthServiceTest extends IntegrationTestSupport {
 
     @BeforeEach
     void setUp() {
+        postRepository.deleteAllInBatch();
         userRepository.deleteAllInBatch();
     }
 

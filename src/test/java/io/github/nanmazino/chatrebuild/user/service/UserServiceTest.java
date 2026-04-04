@@ -3,6 +3,7 @@ package io.github.nanmazino.chatrebuild.user.service;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
+import io.github.nanmazino.chatrebuild.post.repository.PostRepository;
 import io.github.nanmazino.chatrebuild.support.IntegrationTestSupport;
 import io.github.nanmazino.chatrebuild.user.dto.request.SignUpRequest;
 import io.github.nanmazino.chatrebuild.user.dto.response.SignUpResponse;
@@ -31,10 +32,14 @@ class UserServiceTest extends IntegrationTestSupport {
     private UserRepository userRepository;
 
     @Autowired
+    private PostRepository postRepository;
+
+    @Autowired
     private PasswordEncoder passwordEncoder;
 
     @BeforeEach
     void setUp() {
+        postRepository.deleteAllInBatch();
         userRepository.deleteAllInBatch();
     }
 

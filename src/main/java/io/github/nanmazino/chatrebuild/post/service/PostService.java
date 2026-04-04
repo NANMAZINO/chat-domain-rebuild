@@ -16,6 +16,7 @@ import io.github.nanmazino.chatrebuild.post.exception.PostNotFoundException;
 import io.github.nanmazino.chatrebuild.post.repository.PostRepository;
 import io.github.nanmazino.chatrebuild.user.entity.User;
 import io.github.nanmazino.chatrebuild.user.repository.UserRepository;
+import java.util.Collections;
 import java.util.List;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Page;
@@ -66,16 +67,24 @@ public class PostService {
         String keyword) {
         int resolvedPage = page == null ? DEFAULT_PAGE : page;
         int resolvedSize = size == null ? DEFAULT_SIZE : size;
-
-        List<PostStatus> statuses = status == null
-            ? List.of(PostStatus.OPEN, PostStatus.CLOSED)
-            : List.of(status);
-
         PageRequest pageable = PageRequest.of(
             resolvedPage,
             resolvedSize,
             Sort.by(Sort.Direction.DESC, "createdAt")
         );
+
+        if (status == PostStatus.DELETED) {
+            return new PostListResponse(
+                Collections.emptyList(),
+                pageable.getPageNumber(),
+                pageable.getPageSize(),
+                false
+            );
+        }
+
+        List<PostStatus> statuses = status == null
+            ? List.of(PostStatus.OPEN, PostStatus.CLOSED)
+            : List.of(status);
 
         Page<Post> result = postRepository.findAllByStatusesAndKeyword(
             statuses,

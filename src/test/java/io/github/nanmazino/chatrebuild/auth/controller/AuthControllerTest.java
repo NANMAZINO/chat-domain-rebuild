@@ -9,6 +9,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 import io.github.nanmazino.chatrebuild.support.IntegrationTestSupport;
+import io.github.nanmazino.chatrebuild.post.repository.PostRepository;
 import io.github.nanmazino.chatrebuild.user.entity.User;
 import io.github.nanmazino.chatrebuild.user.repository.UserRepository;
 import org.junit.jupiter.api.BeforeEach;
@@ -34,10 +35,14 @@ class AuthControllerTest extends IntegrationTestSupport {
     private UserRepository userRepository;
 
     @Autowired
+    private PostRepository postRepository;
+
+    @Autowired
     private PasswordEncoder passwordEncoder;
 
     @BeforeEach
     void setUp() {
+        postRepository.deleteAllInBatch();
         userRepository.deleteAllInBatch();
     }
 

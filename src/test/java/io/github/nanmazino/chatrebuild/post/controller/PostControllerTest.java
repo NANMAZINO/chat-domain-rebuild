@@ -108,6 +108,32 @@ class PostControllerTest extends IntegrationTestSupport {
     }
 
     @Test
+    @DisplayName("게시글 목록 조회는 비회원도 가능하고 DELETED 상태는 status 필터로도 노출되지 않는다")
+    void getPostsAsGuestDoesNotExposeDeletedStatus() throws Exception {
+        postRepository.save(new Post(author, "deleted-post", "content", 4, PostStatus.DELETED));
+
+        mockMvc.perform(get("/api/posts")
+                .param("status", "DELETED"))
+            .andExpect(status().isOk())
+            .andExpect(jsonPath("$.success").value(true))
+            .andExpect(jsonPath("$.data.items.length()").value(0))
+            .andExpect(jsonPath("$.data.hasNext").value(false));
+    }
+
+    @Test
+    @DisplayName("게시글 상세 조회는 비회원도 가능하다")
+    void getPostAsGuestSuccess() throws Exception {
+        Post savedPost = postRepository.save(new Post(author, "detail-title", "detail-content", 4, PostStatus.OPEN));
+
+        mockMvc.perform(get("/api/posts/" + savedPost.getId()))
+            .andExpect(status().isOk())
+            .andExpect(jsonPath("$.success").value(true))
+            .andExpect(jsonPath("$.data.postId").value(savedPost.getId()))
+            .andExpect(jsonPath("$.data.author.userId").value(author.getId()))
+            .andExpect(jsonPath("$.data.author.nickname").value("author"));
+    }
+
+    @Test
     @DisplayName("삭제된 게시글 상세 조회는 404와 POST_NOT_FOUND를 반환한다")
     void getDeletedPostFails() throws Exception {
         Post deletedPost = postRepository.save(new Post(author, "deleted-post", "content", 4, PostStatus.DELETED));
@@ -140,6 +166,19 @@ class PostControllerTest extends IntegrationTestSupport {
     }
 
     @Test
+    @DisplayName("게시글 모집 종료는 작성자만 가능하다")
+    void closePostForbiddenForNonAuthor() throws Exception {
+        Post savedPost = postRepository.save(new Post(author, "close-title", "close-content", 4, PostStatus.OPEN));
+        String accessToken = jwtTokenProvider.generateAccessToken(otherUser.getId(), otherUser.getEmail());
+
+        mockMvc.perform(patch("/api/posts/" + savedPost.getId() + "/close")
+                .header(HttpHeaders.AUTHORIZATION, "Bearer " + accessToken))
+            .andExpect(status().isForbidden())
+            .andExpect(jsonPath("$.success").value(false))
+            .andExpect(jsonPath("$.error.code").value("AUTH_FORBIDDEN"));
+    }
+
+    @Test
     @DisplayName("게시글 모집 종료 성공 시 CLOSED 상태를 반환한다")
     void closePostSuccess() throws Exception {
         Post savedPost = postRepository.save(new Post(author, "close-title", "close-content", 4, PostStatus.OPEN));
@@ -151,6 +190,19 @@ class PostControllerTest extends IntegrationTestSupport {
             .andExpect(jsonPath("$.success").value(true))
             .andExpect(jsonPath("$.data.status").value("CLOSED"))
             .andExpect(jsonPath("$.data.closedAt").isString());
+    }
+
+    @Test
+    @DisplayName("게시글 삭제는 작성자만 가능하다")
+    void deletePostForbiddenForNonAuthor() throws Exception {
+        Post savedPost = postRepository.save(new Post(author, "delete-title", "delete-content", 4, PostStatus.OPEN));
+        String accessToken = jwtTokenProvider.generateAccessToken(otherUser.getId(), otherUser.getEmail());
+
+        mockMvc.perform(delete("/api/posts/" + savedPost.getId())
+                .header(HttpHeaders.AUTHORIZATION, "Bearer " + accessToken))
+            .andExpect(status().isForbidden())
+            .andExpect(jsonPath("$.success").value(false))
+            .andExpect(jsonPath("$.error.code").value("AUTH_FORBIDDEN"));
     }
 
     @Test
