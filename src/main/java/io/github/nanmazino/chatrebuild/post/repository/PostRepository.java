@@ -12,8 +12,8 @@ import org.springframework.data.jpa.repository.Query;
 
 public interface PostRepository extends JpaRepository<Post, Long> {
 
-    @EntityGraph(attributePaths = "author")
-    Optional<Post> findWithAuthorById(Long postId);
+    @EntityGraph(attributePaths = {"author", "chatRoom"})
+    Optional<Post> findWithAuthorAndChatRoomById(Long postId);
 
     @EntityGraph(attributePaths = "author")
     @Query("""

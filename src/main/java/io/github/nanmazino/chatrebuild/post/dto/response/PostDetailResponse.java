@@ -5,6 +5,7 @@ import java.time.LocalDateTime;
 
 public record PostDetailResponse(
     Long postId,
+    Long chatRoomId,
     String title,
     String content,
     int maxParticipants,
