@@ -56,4 +56,12 @@ public class ChatRoom extends BaseTimeEntity {
     public void increaseMemberCount() {
         this.memberCount++;
     }
+
+    public void decreaseMemberCount() {
+        if (this.memberCount <= 0) {
+            throw new IllegalStateException("memberCount는 0보다 작아질 수 없습니다.");
+        }
+
+        this.memberCount--;
+    }
 }

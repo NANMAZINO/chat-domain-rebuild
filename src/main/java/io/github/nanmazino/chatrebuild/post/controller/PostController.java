@@ -1,5 +1,6 @@
 package io.github.nanmazino.chatrebuild.post.controller;
 
+import io.github.nanmazino.chatrebuild.chat.service.ChatMembershipService;
 import io.github.nanmazino.chatrebuild.global.response.ApiResponse;
 import io.github.nanmazino.chatrebuild.global.security.JwtPrincipal;
 import io.github.nanmazino.chatrebuild.post.dto.request.CreatePostRequest;
@@ -8,6 +9,7 @@ import io.github.nanmazino.chatrebuild.post.dto.response.ClosePostResponse;
 import io.github.nanmazino.chatrebuild.post.dto.response.CreatePostResponse;
 import io.github.nanmazino.chatrebuild.post.dto.response.DeletePostResponse;
 import io.github.nanmazino.chatrebuild.post.dto.response.JoinPostResponse;
+import io.github.nanmazino.chatrebuild.post.dto.response.LeavePostResponse;
 import io.github.nanmazino.chatrebuild.post.dto.response.PostDetailResponse;
 import io.github.nanmazino.chatrebuild.post.dto.response.PostListResponse;
 import io.github.nanmazino.chatrebuild.post.entity.PostStatus;
@@ -40,6 +42,7 @@ import org.springframework.web.bind.annotation.RestController;
 public class PostController {
 
     private final PostService postService;
+    private final ChatMembershipService chatMembershipService;
 
     @PostMapping
     @Operation(summary = "게시글 생성", description = "인증 사용자가 게시글을 생성합니다.")
@@ -84,7 +87,18 @@ public class PostController {
         @PathVariable Long postId,
         @AuthenticationPrincipal JwtPrincipal principal
     ) {
-        JoinPostResponse response = postService.joinPost(postId, principal.userId());
+        JoinPostResponse response = chatMembershipService.joinPost(postId, principal.userId());
+
+        return ResponseEntity.ok(ApiResponse.success(response));
+    }
+
+    @PostMapping("/{postId}/leave")
+    @Operation(summary = "게시글 나가기", description = "인증 사용자가 게시글과 연결된 채팅방에서 나갑니다.")
+    public ResponseEntity<ApiResponse<LeavePostResponse>> leavePost(
+        @PathVariable Long postId,
+        @AuthenticationPrincipal JwtPrincipal principal
+    ) {
+        LeavePostResponse response = chatMembershipService.leavePost(postId, principal.userId());
 
         return ResponseEntity.ok(ApiResponse.success(response));
     }

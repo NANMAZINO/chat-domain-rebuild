@@ -3,14 +3,12 @@ package io.github.nanmazino.chatrebuild.post.service;
 import io.github.nanmazino.chatrebuild.chat.entity.ChatRoom;
 import io.github.nanmazino.chatrebuild.chat.entity.ChatRoomMember;
 import io.github.nanmazino.chatrebuild.chat.entity.ChatRoomMemberStatus;
-import io.github.nanmazino.chatrebuild.chat.exception.ChatMemberAlreadyActiveException;
 import io.github.nanmazino.chatrebuild.chat.repository.ChatRoomMemberRepository;
 import io.github.nanmazino.chatrebuild.chat.repository.ChatRoomRepository;
 import io.github.nanmazino.chatrebuild.post.dto.request.CreatePostRequest;
 import io.github.nanmazino.chatrebuild.post.dto.response.CreatePostResponse;
 import io.github.nanmazino.chatrebuild.post.dto.response.ClosePostResponse;
 import io.github.nanmazino.chatrebuild.post.dto.response.DeletePostResponse;
-import io.github.nanmazino.chatrebuild.post.dto.response.JoinPostResponse;
 import io.github.nanmazino.chatrebuild.post.dto.response.PostAuthorResponse;
 import io.github.nanmazino.chatrebuild.post.dto.response.PostDetailResponse;
 import io.github.nanmazino.chatrebuild.post.dto.response.PostListResponse;
@@ -148,27 +146,6 @@ public class PostService {
     }
 
     @Transactional
-    public JoinPostResponse joinPost(Long postId, Long userId) {
-        Post post = getPostForMutation(postId);
-        validateJoinablePost(post);
-
-        ChatRoom chatRoom = post.getChatRoom();
-        LocalDateTime joinedAt = LocalDateTime.now();
-        ChatRoomMember joinedMember = chatRoomMemberRepository.findByRoomIdAndUserId(chatRoom.getId(), userId)
-            .map(existingMember -> restoreOrRejectMember(existingMember, joinedAt))
-            .orElseGet(() -> createActiveMember(chatRoom, userId, joinedAt));
-        chatRoom.increaseMemberCount();
-
-        return new JoinPostResponse(
-            post.getId(),
-            chatRoom.getId(),
-            joinedMember.getStatus(),
-            chatRoom.getMemberCount(),
-            joinedMember.getJoinedAt()
-        );
-    }
-
-    @Transactional
     public PostDetailResponse updatePost(Long postId, Long authorId, UpdatePostRequest request) {
         Post post = getActiveOrClosedPost(postId);
         validateAuthor(post, authorId);
@@ -240,37 +217,6 @@ public class PostService {
     private Post getPostForMutation(Long postId) {
         return postRepository.findWithAuthorAndChatRoomById(postId)
             .orElseThrow(PostNotFoundException::new);
-    }
-
-    private ChatRoomMember restoreOrRejectMember(ChatRoomMember existingMember, LocalDateTime joinedAt) {
-        if (existingMember.getStatus() == ChatRoomMemberStatus.ACTIVE) {
-            throw new ChatMemberAlreadyActiveException();
-        }
-
-        existingMember.reactivate(joinedAt);
-        return existingMember;
-    }
-
-    private ChatRoomMember createActiveMember(ChatRoom chatRoom, Long userId, LocalDateTime joinedAt) {
-        User user = userRepository.findById(userId)
-            .orElseThrow(() -> new IllegalStateException("인증 사용자를 찾을 수 없습니다."));
-
-        return chatRoomMemberRepository.save(new ChatRoomMember(
-            chatRoom,
-            user,
-            ChatRoomMemberStatus.ACTIVE,
-            joinedAt
-        ));
-    }
-
-    private void validateJoinablePost(Post post) {
-        if (post.getStatus() == PostStatus.DELETED) {
-            throw new PostNotFoundException();
-        }
-
-        if (post.getStatus() == PostStatus.CLOSED) {
-            throw new PostAlreadyClosedException();
-        }
     }
 
     private void validateAuthor(Post post, Long authorId) {
