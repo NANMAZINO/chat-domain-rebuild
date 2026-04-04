@@ -45,4 +45,18 @@ public class Post extends BaseTimeEntity {
         this.maxParticipants = maxParticipants;
         this.status = status;
     }
+
+    public void update(String title, String content, int maxParticipants) {
+        this.title = title;
+        this.content = content;
+        this.maxParticipants = maxParticipants;
+    }
+
+    public void close() {
+        this.status = PostStatus.CLOSED;
+    }
+
+    public void delete() {
+        this.status = PostStatus.DELETED;
+    }
 }
