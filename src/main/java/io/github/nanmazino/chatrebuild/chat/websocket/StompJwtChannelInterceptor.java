@@ -1,27 +1,19 @@
 package io.github.nanmazino.chatrebuild.chat.websocket;
 
-import com.fasterxml.jackson.databind.ObjectMapper;
 import io.github.nanmazino.chatrebuild.chat.exception.ChatMemberNotFoundException;
-import io.github.nanmazino.chatrebuild.chat.dto.request.ChatSendRequest;
 import io.github.nanmazino.chatrebuild.chat.service.ChatMembershipService;
+import io.github.nanmazino.chatrebuild.chat.validation.ChatSendPayloadValidator;
 import io.github.nanmazino.chatrebuild.global.security.CustomUserDetailsService;
 import io.github.nanmazino.chatrebuild.global.security.JwtAuthorizationTokenResolver;
 import io.github.nanmazino.chatrebuild.global.security.JwtPrincipal;
 import io.github.nanmazino.chatrebuild.global.security.JwtTokenProvider;
-import java.io.IOException;
-import java.nio.charset.StandardCharsets;
 import java.security.Principal;
-import java.util.Set;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
-import jakarta.validation.ConstraintViolation;
-import jakarta.validation.ConstraintViolationException;
-import jakarta.validation.Validator;
 import lombok.RequiredArgsConstructor;
 import org.springframework.lang.Nullable;
 import org.springframework.messaging.Message;
 import org.springframework.messaging.MessageChannel;
-import org.springframework.messaging.converter.MessageConversionException;
 import org.springframework.messaging.simp.stomp.StompCommand;
 import org.springframework.messaging.simp.stomp.StompHeaderAccessor;
 import org.springframework.messaging.support.ChannelInterceptor;
@@ -45,8 +37,7 @@ public class StompJwtChannelInterceptor implements ChannelInterceptor {
     private final JwtTokenProvider jwtTokenProvider;
     private final CustomUserDetailsService customUserDetailsService;
     private final ChatMembershipService chatMembershipService;
-    private final ObjectMapper objectMapper;
-    private final Validator validator;
+    private final ChatSendPayloadValidator chatSendPayloadValidator;
 
     @Override
     public Message<?> preSend(Message<?> message, MessageChannel channel) {
@@ -107,7 +98,7 @@ public class StompJwtChannelInterceptor implements ChannelInterceptor {
 
     private Message<?> authorizeAndValidateSend(StompHeaderAccessor accessor, Message<?> message) {
         authorize(accessor, message, SEND_DESTINATION_PATTERN);
-        validateSendPayload(message);
+        chatSendPayloadValidator.validate(message);
 
         return message;
     }
@@ -129,34 +120,5 @@ public class StompJwtChannelInterceptor implements ChannelInterceptor {
         }
 
         return Long.parseLong(matcher.group(1));
-    }
-
-    private void validateSendPayload(Message<?> message) {
-        ChatSendRequest request;
-
-        try {
-            request = objectMapper.readValue(extractPayloadBytes(message), ChatSendRequest.class);
-        } catch (IOException exception) {
-            throw new MessageConversionException("메시지 payload를 해석할 수 없습니다.", exception);
-        }
-
-        Set<ConstraintViolation<ChatSendRequest>> violations = validator.validate(request);
-        if (!violations.isEmpty()) {
-            throw new ConstraintViolationException(violations);
-        }
-    }
-
-    private byte[] extractPayloadBytes(Message<?> message) {
-        Object payload = message.getPayload();
-
-        if (payload instanceof byte[] bytes) {
-            return bytes;
-        }
-
-        if (payload instanceof String text) {
-            return text.getBytes(StandardCharsets.UTF_8);
-        }
-
-        throw new MessageConversionException("지원하지 않는 메시지 payload 타입입니다: " + payload.getClass().getName());
     }
 }
