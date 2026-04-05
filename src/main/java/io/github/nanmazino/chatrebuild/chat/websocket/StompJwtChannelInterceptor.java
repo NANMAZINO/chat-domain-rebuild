@@ -1,7 +1,12 @@
-package io.github.nanmazino.chatrebuild.global.security;
+package io.github.nanmazino.chatrebuild.chat.websocket;
 
-import io.github.nanmazino.chatrebuild.chat.service.ChatMembershipService;
 import io.github.nanmazino.chatrebuild.chat.exception.ChatMemberNotFoundException;
+import io.github.nanmazino.chatrebuild.chat.service.ChatMembershipService;
+import io.github.nanmazino.chatrebuild.chat.validation.ChatSendPayloadValidator;
+import io.github.nanmazino.chatrebuild.global.security.CustomUserDetailsService;
+import io.github.nanmazino.chatrebuild.global.security.JwtAuthorizationTokenResolver;
+import io.github.nanmazino.chatrebuild.global.security.JwtPrincipal;
+import io.github.nanmazino.chatrebuild.global.security.JwtTokenProvider;
 import java.security.Principal;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
@@ -32,6 +37,7 @@ public class StompJwtChannelInterceptor implements ChannelInterceptor {
     private final JwtTokenProvider jwtTokenProvider;
     private final CustomUserDetailsService customUserDetailsService;
     private final ChatMembershipService chatMembershipService;
+    private final ChatSendPayloadValidator chatSendPayloadValidator;
 
     @Override
     public Message<?> preSend(Message<?> message, MessageChannel channel) {
@@ -44,7 +50,7 @@ public class StompJwtChannelInterceptor implements ChannelInterceptor {
         return switch (accessor.getCommand()) {
             case CONNECT -> authenticate(accessor, message);
             case SUBSCRIBE -> authorize(accessor, message, SUBSCRIBE_DESTINATION_PATTERN);
-            case SEND -> authorize(accessor, message, SEND_DESTINATION_PATTERN);
+            case SEND -> authorizeAndValidateSend(accessor, message);
             default -> message;
         };
     }
@@ -86,6 +92,13 @@ public class StompJwtChannelInterceptor implements ChannelInterceptor {
         } catch (ChatMemberNotFoundException exception) {
             throw new AccessDeniedException("채팅방 접근 권한이 없습니다.", exception);
         }
+
+        return message;
+    }
+
+    private Message<?> authorizeAndValidateSend(StompHeaderAccessor accessor, Message<?> message) {
+        authorize(accessor, message, SEND_DESTINATION_PATTERN);
+        chatSendPayloadValidator.validate(message);
 
         return message;
     }

@@ -1,6 +1,6 @@
-package io.github.nanmazino.chatrebuild.global.config;
+package io.github.nanmazino.chatrebuild.chat.config;
 
-import io.github.nanmazino.chatrebuild.global.security.StompJwtChannelInterceptor;
+import io.github.nanmazino.chatrebuild.chat.websocket.StompJwtChannelInterceptor;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.messaging.simp.config.MessageBrokerRegistry;
 import org.springframework.messaging.simp.config.ChannelRegistration;
@@ -10,11 +10,11 @@ import org.springframework.web.socket.config.annotation.WebSocketMessageBrokerCo
 
 @Configuration
 @EnableWebSocketMessageBroker
-public class WebSocketConfig implements WebSocketMessageBrokerConfigurer {
+public class ChatWebSocketConfig implements WebSocketMessageBrokerConfigurer {
 
     private final StompJwtChannelInterceptor stompJwtChannelInterceptor;
 
-    public WebSocketConfig(StompJwtChannelInterceptor stompJwtChannelInterceptor) {
+    public ChatWebSocketConfig(StompJwtChannelInterceptor stompJwtChannelInterceptor) {
         this.stompJwtChannelInterceptor = stompJwtChannelInterceptor;
     }
 
