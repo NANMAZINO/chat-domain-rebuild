@@ -16,6 +16,7 @@ import io.github.nanmazino.chatrebuild.user.entity.User;
 import io.github.nanmazino.chatrebuild.user.repository.UserRepository;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.concurrent.atomic.AtomicLong;
 import java.util.concurrent.Callable;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.ExecutorService;
@@ -31,6 +32,8 @@ import org.springframework.test.context.ActiveProfiles;
 @SpringBootTest
 @ActiveProfiles("test")
 class ChatMembershipServiceTest extends IntegrationTestSupport {
+
+    private static final AtomicLong TEST_USER_SEQUENCE = new AtomicLong();
 
     @Autowired
     private ChatMembershipService chatMembershipService;
@@ -58,9 +61,9 @@ class ChatMembershipServiceTest extends IntegrationTestSupport {
     @Test
     @DisplayName("동시에 여러 사용자가 참여해도 정원을 넘지 않고 memberCount가 ACTIVE 수와 일치한다")
     void joinPostMaintainsCapacityAndMemberCountUnderConcurrency() throws Exception {
-        User author = userRepository.save(new User("author@test.com", "pw", "author"));
-        User user1 = userRepository.save(new User("user1@test.com", "pw", "user1"));
-        User user2 = userRepository.save(new User("user2@test.com", "pw", "user2"));
+        User author = saveTestUser("author");
+        User user1 = saveTestUser("user1");
+        User user2 = saveTestUser("user2");
         Post post = postRepository.save(new Post(author, "title", "content", 2, PostStatus.OPEN));
         ChatRoom chatRoom = chatRoomRepository.save(new ChatRoom(post));
         chatRoomMemberRepository.save(new ChatRoomMember(
@@ -109,8 +112,8 @@ class ChatMembershipServiceTest extends IntegrationTestSupport {
     @Test
     @DisplayName("나가기 후 다시 참여해도 memberCount는 ACTIVE 수와 일치한다")
     void leaveAndRejoinKeepsMemberCountConsistent() {
-        User author = userRepository.save(new User("author@test.com", "pw", "author"));
-        User member = userRepository.save(new User("member@test.com", "pw", "member"));
+        User author = saveTestUser("author");
+        User member = saveTestUser("member");
         Post post = postRepository.save(new Post(author, "title", "content", 3, PostStatus.OPEN));
         ChatRoom chatRoom = chatRoomRepository.save(new ChatRoom(post));
         chatRoomMemberRepository.save(new ChatRoomMember(
@@ -150,5 +153,15 @@ class ChatMembershipServiceTest extends IntegrationTestSupport {
         } catch (ChatRoomFullException exception) {
             return "CHAT_ROOM_FULL";
         }
+    }
+
+    private User saveTestUser(String prefix) {
+        long sequence = TEST_USER_SEQUENCE.incrementAndGet();
+
+        return userRepository.save(new User(
+            prefix + "-" + sequence + "@test.com",
+            "pw",
+            prefix + "-" + sequence
+        ));
     }
 }
