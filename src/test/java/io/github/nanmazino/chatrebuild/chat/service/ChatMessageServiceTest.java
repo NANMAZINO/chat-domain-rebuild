@@ -1,14 +1,17 @@
 package io.github.nanmazino.chatrebuild.chat.service;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 import io.github.nanmazino.chatrebuild.chat.dto.request.ChatSendRequest;
+import io.github.nanmazino.chatrebuild.chat.dto.response.ChatMessageHistoryResponse;
 import io.github.nanmazino.chatrebuild.chat.dto.response.ChatMessageResponse;
 import io.github.nanmazino.chatrebuild.chat.entity.ChatMessage;
 import io.github.nanmazino.chatrebuild.chat.entity.ChatMessageType;
 import io.github.nanmazino.chatrebuild.chat.entity.ChatRoom;
 import io.github.nanmazino.chatrebuild.chat.entity.ChatRoomMember;
 import io.github.nanmazino.chatrebuild.chat.entity.ChatRoomMemberStatus;
+import io.github.nanmazino.chatrebuild.chat.exception.ChatMemberNotFoundException;
 import io.github.nanmazino.chatrebuild.chat.repository.ChatMessageRepository;
 import io.github.nanmazino.chatrebuild.chat.repository.ChatRoomMemberRepository;
 import io.github.nanmazino.chatrebuild.chat.repository.ChatRoomRepository;
@@ -91,5 +94,154 @@ class ChatMessageServiceTest extends IntegrationTestSupport {
         assertThat(savedMessage.getContent()).isEqualTo("안녕하세요");
         assertThat(savedMessage.getType()).isEqualTo(ChatMessageType.TEXT);
         assertThat(savedMessage.getCreatedAt()).isNotNull();
+    }
+
+    @Test
+    @DisplayName("cursor 없이 조회하면 최신 메시지부터 size 기준으로 반환하고 다음 cursor를 계산한다")
+    void getMessagesReturnsLatestMessagesWithoutCursor() {
+        MessageFixture fixture = createMessageFixture(PostStatus.OPEN);
+        ChatMessage first = chatMessageRepository.save(new ChatMessage(
+            fixture.room(),
+            fixture.author(),
+            "첫 번째",
+            ChatMessageType.TEXT
+        ));
+        ChatMessage second = chatMessageRepository.save(new ChatMessage(
+            fixture.room(),
+            fixture.member(),
+            "두 번째",
+            ChatMessageType.TEXT
+        ));
+        ChatMessage third = chatMessageRepository.save(new ChatMessage(
+            fixture.room(),
+            fixture.author(),
+            "세 번째",
+            ChatMessageType.TEXT
+        ));
+
+        ChatMessageHistoryResponse response = chatMessageService.getMessages(
+            fixture.room().getId(),
+            fixture.member().getId(),
+            null,
+            2
+        );
+
+        assertThat(response.items()).hasSize(2);
+        assertThat(response.items().get(0).messageId()).isEqualTo(third.getId());
+        assertThat(response.items().get(1).messageId()).isEqualTo(second.getId());
+        assertThat(response.nextCursor()).isEqualTo(second.getId());
+        assertThat(response.hasNext()).isTrue();
+        assertThat(response.items()).extracting(ChatMessageResponse::content)
+            .containsExactly("세 번째", "두 번째");
+        assertThat(first.getId()).isLessThan(second.getId());
+    }
+
+    @Test
+    @DisplayName("cursor 기준으로 다음 페이지를 조회하고 마지막 페이지에서는 nextCursor가 없다")
+    void getMessagesReturnsNextPageByCursor() {
+        MessageFixture fixture = createMessageFixture(PostStatus.OPEN);
+        ChatMessage first = chatMessageRepository.save(new ChatMessage(
+            fixture.room(),
+            fixture.author(),
+            "첫 번째",
+            ChatMessageType.TEXT
+        ));
+        ChatMessage second = chatMessageRepository.save(new ChatMessage(
+            fixture.room(),
+            fixture.member(),
+            "두 번째",
+            ChatMessageType.TEXT
+        ));
+        ChatMessage third = chatMessageRepository.save(new ChatMessage(
+            fixture.room(),
+            fixture.author(),
+            "세 번째",
+            ChatMessageType.TEXT
+        ));
+
+        ChatMessageHistoryResponse firstPage = chatMessageService.getMessages(
+            fixture.room().getId(),
+            fixture.member().getId(),
+            null,
+            2
+        );
+        ChatMessageHistoryResponse nextPage = chatMessageService.getMessages(
+            fixture.room().getId(),
+            fixture.member().getId(),
+            firstPage.nextCursor(),
+            2
+        );
+
+        assertThat(firstPage.nextCursor()).isEqualTo(second.getId());
+        assertThat(nextPage.items()).hasSize(1);
+        assertThat(nextPage.items().get(0).messageId()).isEqualTo(first.getId());
+        assertThat(nextPage.hasNext()).isFalse();
+        assertThat(nextPage.nextCursor()).isNull();
+        assertThat(third.getId()).isGreaterThan(second.getId());
+    }
+
+    @Test
+    @DisplayName("게시글이 CLOSED 또는 DELETED여도 ACTIVE 멤버는 히스토리를 조회할 수 있다")
+    void getMessagesAllowsActiveMemberForClosedOrDeletedPost() {
+        MessageFixture closedFixture = createMessageFixture(PostStatus.CLOSED);
+        chatMessageRepository.save(new ChatMessage(closedFixture.room(), closedFixture.author(), "닫힘", ChatMessageType.TEXT));
+
+        ChatMessageHistoryResponse closedResponse = chatMessageService.getMessages(
+            closedFixture.room().getId(),
+            closedFixture.member().getId(),
+            null,
+            10
+        );
+
+        MessageFixture deletedFixture = createMessageFixture(PostStatus.DELETED);
+        chatMessageRepository.save(new ChatMessage(deletedFixture.room(), deletedFixture.author(), "삭제됨", ChatMessageType.TEXT));
+
+        ChatMessageHistoryResponse deletedResponse = chatMessageService.getMessages(
+            deletedFixture.room().getId(),
+            deletedFixture.member().getId(),
+            null,
+            10
+        );
+
+        assertThat(closedResponse.items()).hasSize(1);
+        assertThat(closedResponse.items().get(0).content()).isEqualTo("닫힘");
+        assertThat(deletedResponse.items()).hasSize(1);
+        assertThat(deletedResponse.items().get(0).content()).isEqualTo("삭제됨");
+    }
+
+    @Test
+    @DisplayName("ACTIVE 멤버가 아니면 메시지 히스토리 조회에 실패한다")
+    void getMessagesFailsForNonActiveMember() {
+        MessageFixture fixture = createMessageFixture(PostStatus.OPEN);
+        User outsider = userRepository.save(new User("outsider@test.com", "pw", "outsider"));
+
+        assertThatThrownBy(() -> chatMessageService.getMessages(
+            fixture.room().getId(),
+            outsider.getId(),
+            null,
+            10
+        )).isInstanceOf(ChatMemberNotFoundException.class);
+    }
+
+    private MessageFixture createMessageFixture(PostStatus status) {
+        User author = userRepository.save(new User("author-" + status + "@test.com", "pw", "author-" + status));
+        User member = userRepository.save(new User("member-" + status + "@test.com", "pw", "member-" + status));
+        Post post = postRepository.save(new Post(author, "title-" + status, "content", 4, status));
+        ChatRoom room = chatRoomRepository.save(new ChatRoom(post));
+
+        chatRoomMemberRepository.save(new ChatRoomMember(room, author, ChatRoomMemberStatus.ACTIVE, post.getCreatedAt()));
+        room.increaseMemberCount();
+        chatRoomMemberRepository.save(new ChatRoomMember(room, member, ChatRoomMemberStatus.ACTIVE, post.getCreatedAt()));
+        room.increaseMemberCount();
+        chatRoomRepository.saveAndFlush(room);
+
+        return new MessageFixture(author, member, room);
+    }
+
+    private record MessageFixture(
+        User author,
+        User member,
+        ChatRoom room
+    ) {
     }
 }
