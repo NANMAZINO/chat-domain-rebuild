@@ -1,4 +1,4 @@
-package io.github.nanmazino.chatrebuild.global.security;
+package io.github.nanmazino.chatrebuild.chat.websocket;
 
 import org.springframework.beans.factory.SmartInitializingSingleton;
 import org.springframework.beans.factory.annotation.Qualifier;

@@ -7,6 +7,7 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import io.github.nanmazino.chatrebuild.chat.entity.ChatRoom;
 import io.github.nanmazino.chatrebuild.chat.entity.ChatRoomMember;
 import io.github.nanmazino.chatrebuild.chat.entity.ChatRoomMemberStatus;
+import io.github.nanmazino.chatrebuild.chat.repository.ChatMessageRepository;
 import io.github.nanmazino.chatrebuild.chat.repository.ChatRoomMemberRepository;
 import io.github.nanmazino.chatrebuild.chat.repository.ChatRoomRepository;
 import io.github.nanmazino.chatrebuild.global.security.JwtTokenProvider;
@@ -16,6 +17,7 @@ import io.github.nanmazino.chatrebuild.post.repository.PostRepository;
 import io.github.nanmazino.chatrebuild.support.IntegrationTestSupport;
 import io.github.nanmazino.chatrebuild.user.entity.User;
 import io.github.nanmazino.chatrebuild.user.repository.UserRepository;
+import java.nio.charset.StandardCharsets;
 import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.List;
@@ -59,6 +61,9 @@ class WebSocketSecurityIntegrationTest extends IntegrationTestSupport {
     private ChatRoomMemberRepository chatRoomMemberRepository;
 
     @Autowired
+    private ChatMessageRepository chatMessageRepository;
+
+    @Autowired
     private PasswordEncoder passwordEncoder;
 
     @Autowired
@@ -80,6 +85,7 @@ class WebSocketSecurityIntegrationTest extends IntegrationTestSupport {
 
     @BeforeEach
     void setUp() {
+        chatMessageRepository.deleteAllInBatch();
         chatRoomMemberRepository.deleteAllInBatch();
         chatRoomRepository.deleteAllInBatch();
         postRepository.deleteAllInBatch();
@@ -202,6 +208,7 @@ class WebSocketSecurityIntegrationTest extends IntegrationTestSupport {
 
         assertThat(frameCommand(frame)).isEqualTo("ERROR");
         assertThat(error.path("error").path("code").asText()).isEqualTo("AUTH_FORBIDDEN");
+        assertThat(chatMessageRepository.countByRoomId(openRoom.getId())).isZero();
     }
 
     @Test
@@ -215,6 +222,7 @@ class WebSocketSecurityIntegrationTest extends IntegrationTestSupport {
 
         assertThat(frameCommand(frame)).isEqualTo("ERROR");
         assertThat(error.path("error").path("code").asText()).isEqualTo("AUTH_FORBIDDEN");
+        assertThat(chatMessageRepository.countByRoomId(openRoom.getId())).isZero();
     }
 
     @Test
@@ -317,12 +325,15 @@ class WebSocketSecurityIntegrationTest extends IntegrationTestSupport {
     }
 
     private String sendFrame(Long roomId) {
+        String body = "{\"content\":\"hello\",\"type\":\"TEXT\"}";
+        int contentLength = body.getBytes(StandardCharsets.UTF_8).length;
+
         return "SEND\n"
             + "destination:/pub/chat-rooms/" + roomId + "/messages\n"
             + "content-type:application/json\n"
-            + "content-length:2\n"
+            + "content-length:" + contentLength + "\n"
             + "\n"
-            + "{}"
+            + body
             + "\u0000";
     }
 
