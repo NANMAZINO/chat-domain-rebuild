@@ -20,6 +20,7 @@ public enum ErrorCode {
     CHAT_ROOM_FULL(HttpStatus.CONFLICT, "CHAT_ROOM_FULL", "채팅방 정원이 가득 찼습니다."),
     CHAT_MEMBER_NOT_FOUND(HttpStatus.NOT_FOUND, "CHAT_MEMBER_NOT_FOUND", "채팅방 참여 멤버를 찾을 수 없습니다."),
     CHAT_MEMBER_ALREADY_ACTIVE(HttpStatus.CONFLICT, "CHAT_MEMBER_ALREADY_ACTIVE", "이미 참여 중인 채팅방입니다."),
+    CHAT_MESSAGE_INVALID_CURSOR(HttpStatus.BAD_REQUEST, "CHAT_MESSAGE_INVALID_CURSOR", "cursorMessageId가 올바르지 않습니다."),
     INTERNAL_SERVER_ERROR(HttpStatus.INTERNAL_SERVER_ERROR, "INTERNAL_SERVER_ERROR", "서버 내부 오류가 발생했습니다.");
 
     private final HttpStatus status;
