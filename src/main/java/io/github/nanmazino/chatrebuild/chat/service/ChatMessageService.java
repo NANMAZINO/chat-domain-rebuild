@@ -5,12 +5,13 @@ import io.github.nanmazino.chatrebuild.chat.dto.response.ChatMessageHistoryRespo
 import io.github.nanmazino.chatrebuild.chat.dto.response.ChatMessageResponse;
 import io.github.nanmazino.chatrebuild.chat.entity.ChatMessage;
 import io.github.nanmazino.chatrebuild.chat.entity.ChatRoomMember;
+import io.github.nanmazino.chatrebuild.chat.exception.InvalidChatMessageCursorException;
 import io.github.nanmazino.chatrebuild.chat.repository.ChatMessageRepository;
 import java.util.List;
 import lombok.RequiredArgsConstructor;
+import org.springframework.data.domain.PageRequest;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
-import org.springframework.data.domain.PageRequest;
 
 @Service
 @RequiredArgsConstructor
@@ -22,18 +23,16 @@ public class ChatMessageService {
 
     public ChatMessageHistoryResponse getMessages(Long roomId, Long userId, Long cursorMessageId, int size) {
         chatMembershipService.getActiveMember(roomId, userId);
-
-        List<ChatMessage> fetchedMessages = getFetchedMessages(roomId, cursorMessageId, size + 1);
-        boolean hasNext = fetchedMessages.size() > size;
-        List<ChatMessageResponse> items = fetchedMessages.stream()
+        MessagePage messagePage = getMessagePage(roomId, cursorMessageId, size);
+        List<ChatMessageResponse> items = messagePage.messages().stream()
             .limit(size)
-            .map(ChatMessageResponse::from)
+            .map(message -> ChatMessageResponse.from(roomId, message))
             .toList();
-        Long nextCursor = hasNext && !items.isEmpty()
+        Long nextCursor = messagePage.hasNext() && !items.isEmpty()
             ? items.get(items.size() - 1).messageId()
             : null;
 
-        return new ChatMessageHistoryResponse(items, nextCursor, hasNext);
+        return new ChatMessageHistoryResponse(items, nextCursor, messagePage.hasNext());
     }
 
     @Transactional
@@ -54,13 +53,45 @@ public class ChatMessageService {
         return ChatMessageResponse.from(savedMessage);
     }
 
-    private List<ChatMessage> getFetchedMessages(Long roomId, Long cursorMessageId, int fetchSize) {
-        PageRequest pageRequest = PageRequest.of(0, fetchSize);
-
+    private MessagePage getMessagePage(Long roomId, Long cursorMessageId, int size) {
         if (cursorMessageId == null) {
-            return chatMessageRepository.findRecentMessages(roomId, pageRequest);
+            List<ChatMessage> fetchedMessages = chatMessageRepository.findRecentMessages(
+                roomId,
+                PageRequest.of(0, size + 1)
+            );
+
+            return buildMessagePage(fetchedMessages, size);
         }
 
-        return chatMessageRepository.findRecentMessagesBeforeCursor(roomId, cursorMessageId, pageRequest);
+        if (cursorMessageId <= 0) {
+            throw new InvalidChatMessageCursorException();
+        }
+
+        List<ChatMessage> fetchedMessages = chatMessageRepository.findRecentMessagesAtOrBeforeCursor(
+            roomId,
+            cursorMessageId,
+            PageRequest.of(0, size + 2)
+        );
+
+        if (fetchedMessages.isEmpty() || !fetchedMessages.get(0).getId().equals(cursorMessageId)) {
+            throw new InvalidChatMessageCursorException();
+        }
+
+        return buildMessagePage(fetchedMessages.subList(1, fetchedMessages.size()), size);
+    }
+
+    private MessagePage buildMessagePage(List<ChatMessage> fetchedMessages, int size) {
+        boolean hasNext = fetchedMessages.size() > size;
+        List<ChatMessage> messages = fetchedMessages.stream()
+            .limit(size)
+            .toList();
+
+        return new MessagePage(messages, hasNext);
+    }
+
+    private record MessagePage(
+        List<ChatMessage> messages,
+        boolean hasNext
+    ) {
     }
 }

@@ -14,9 +14,13 @@ public record ChatMessageResponse(
 ) {
 
     public static ChatMessageResponse from(ChatMessage message) {
+        return from(message.getRoom().getId(), message);
+    }
+
+    public static ChatMessageResponse from(Long roomId, ChatMessage message) {
         return new ChatMessageResponse(
             message.getId(),
-            message.getRoom().getId(),
+            roomId,
             new Sender(
                 message.getSender().getId(),
                 message.getSender().getNickname()

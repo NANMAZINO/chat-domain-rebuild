@@ -12,6 +12,7 @@ import io.github.nanmazino.chatrebuild.chat.entity.ChatRoom;
 import io.github.nanmazino.chatrebuild.chat.entity.ChatRoomMember;
 import io.github.nanmazino.chatrebuild.chat.entity.ChatRoomMemberStatus;
 import io.github.nanmazino.chatrebuild.chat.exception.ChatMemberNotFoundException;
+import io.github.nanmazino.chatrebuild.chat.exception.InvalidChatMessageCursorException;
 import io.github.nanmazino.chatrebuild.chat.repository.ChatMessageRepository;
 import io.github.nanmazino.chatrebuild.chat.repository.ChatRoomMemberRepository;
 import io.github.nanmazino.chatrebuild.chat.repository.ChatRoomRepository;
@@ -207,6 +208,88 @@ class ChatMessageServiceTest extends IntegrationTestSupport {
     }
 
     @Test
+    @DisplayName("가장 오래된 메시지 cursor는 빈 마지막 페이지로 처리한다")
+    void getMessagesReturnsEmptyLastPageWhenCursorIsOldestMessage() {
+        MessageFixture fixture = createMessageFixture(PostStatus.OPEN);
+        ChatMessage first = chatMessageRepository.save(new ChatMessage(
+            fixture.room(),
+            fixture.author(),
+            "첫 번째",
+            ChatMessageType.TEXT
+        ));
+        chatMessageRepository.save(new ChatMessage(
+            fixture.room(),
+            fixture.member(),
+            "두 번째",
+            ChatMessageType.TEXT
+        ));
+
+        ChatMessageHistoryResponse response = chatMessageService.getMessages(
+            fixture.room().getId(),
+            fixture.member().getId(),
+            first.getId(),
+            2
+        );
+
+        assertThat(response.items()).isEmpty();
+        assertThat(response.hasNext()).isFalse();
+        assertThat(response.nextCursor()).isNull();
+    }
+
+    @Test
+    @DisplayName("0 이하 cursor는 잘못된 메시지 cursor 예외를 던진다")
+    void getMessagesRejectsNonPositiveCursor() {
+        MessageFixture fixture = createMessageFixture(PostStatus.OPEN);
+
+        assertThatThrownBy(() -> chatMessageService.getMessages(
+            fixture.room().getId(),
+            fixture.member().getId(),
+            0L,
+            10
+        )).isInstanceOf(InvalidChatMessageCursorException.class);
+
+        assertThatThrownBy(() -> chatMessageService.getMessages(
+            fixture.room().getId(),
+            fixture.member().getId(),
+            -1L,
+            10
+        )).isInstanceOf(InvalidChatMessageCursorException.class);
+    }
+
+    @Test
+    @DisplayName("존재하지 않는 cursor는 잘못된 메시지 cursor 예외를 던진다")
+    void getMessagesRejectsNonExistentCursor() {
+        MessageFixture fixture = createMessageFixture(PostStatus.OPEN);
+
+        assertThatThrownBy(() -> chatMessageService.getMessages(
+            fixture.room().getId(),
+            fixture.member().getId(),
+            999999L,
+            10
+        )).isInstanceOf(InvalidChatMessageCursorException.class);
+    }
+
+    @Test
+    @DisplayName("다른 방 메시지 cursor는 잘못된 메시지 cursor 예외를 던진다")
+    void getMessagesRejectsCursorFromAnotherRoom() {
+        MessageFixture fixture = createMessageFixture("main", PostStatus.OPEN);
+        MessageFixture otherFixture = createMessageFixture("other", PostStatus.OPEN);
+        ChatMessage otherRoomMessage = chatMessageRepository.save(new ChatMessage(
+            otherFixture.room(),
+            otherFixture.author(),
+            "다른 방 메시지",
+            ChatMessageType.TEXT
+        ));
+
+        assertThatThrownBy(() -> chatMessageService.getMessages(
+            fixture.room().getId(),
+            fixture.member().getId(),
+            otherRoomMessage.getId(),
+            10
+        )).isInstanceOf(InvalidChatMessageCursorException.class);
+    }
+
+    @Test
     @DisplayName("게시글이 CLOSED 또는 DELETED여도 ACTIVE 멤버는 히스토리를 조회할 수 있다")
     void getMessagesAllowsActiveMemberForClosedOrDeletedPost() {
         MessageFixture closedFixture = createMessageFixture(PostStatus.CLOSED);
@@ -250,8 +333,12 @@ class ChatMessageServiceTest extends IntegrationTestSupport {
     }
 
     private MessageFixture createMessageFixture(PostStatus status) {
-        User author = userRepository.save(new User("author-" + status + "@test.com", "pw", "author-" + status));
-        User member = userRepository.save(new User("member-" + status + "@test.com", "pw", "member-" + status));
+        return createMessageFixture(status.name().toLowerCase(), status);
+    }
+
+    private MessageFixture createMessageFixture(String key, PostStatus status) {
+        User author = userRepository.save(new User("author-" + key + "@test.com", "pw", "author-" + key));
+        User member = userRepository.save(new User("member-" + key + "@test.com", "pw", "member-" + key));
         Post post = postRepository.save(new Post(author, "title-" + status, "content", 4, status));
         ChatRoom room = chatRoomRepository.save(new ChatRoom(post));
 

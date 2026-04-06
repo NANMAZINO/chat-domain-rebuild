@@ -244,6 +244,43 @@ class ChatRoomControllerTest extends IntegrationTestSupport {
     }
 
     @Test
+    @DisplayName("존재하지 않는 cursorMessageId는 400과 CHAT_MESSAGE_INVALID_CURSOR를 반환한다")
+    void getMessagesRejectsNonExistentCursorMessageId() throws Exception {
+        ChatRoom room = createRoomWithMembers("title", PostStatus.OPEN, true).room();
+        String accessToken = jwtTokenProvider.generateAccessToken(activeMember.getId(), activeMember.getEmail());
+
+        mockMvc.perform(get("/api/chat-rooms/" + room.getId() + "/messages")
+                .header(HttpHeaders.AUTHORIZATION, "Bearer " + accessToken)
+                .param("cursorMessageId", "999999"))
+            .andExpect(status().isBadRequest())
+            .andExpect(jsonPath("$.success").value(false))
+            .andExpect(jsonPath("$.error.code").value("CHAT_MESSAGE_INVALID_CURSOR"))
+            .andExpect(jsonPath("$.error.message").value("cursorMessageId가 올바르지 않습니다."));
+    }
+
+    @Test
+    @DisplayName("다른 방의 cursorMessageId는 400과 CHAT_MESSAGE_INVALID_CURSOR를 반환한다")
+    void getMessagesRejectsCursorMessageIdFromAnotherRoom() throws Exception {
+        ChatRoom room = createRoomWithMembers("title", PostStatus.OPEN, true).room();
+        ChatRoom otherRoom = createRoomWithMembers("other", PostStatus.OPEN, false).room();
+        ChatMessage otherRoomMessage = chatMessageRepository.save(new ChatMessage(
+            otherRoom,
+            author,
+            "다른 방 메시지",
+            ChatMessageType.TEXT
+        ));
+        String accessToken = jwtTokenProvider.generateAccessToken(activeMember.getId(), activeMember.getEmail());
+
+        mockMvc.perform(get("/api/chat-rooms/" + room.getId() + "/messages")
+                .header(HttpHeaders.AUTHORIZATION, "Bearer " + accessToken)
+                .param("cursorMessageId", String.valueOf(otherRoomMessage.getId())))
+            .andExpect(status().isBadRequest())
+            .andExpect(jsonPath("$.success").value(false))
+            .andExpect(jsonPath("$.error.code").value("CHAT_MESSAGE_INVALID_CURSOR"))
+            .andExpect(jsonPath("$.error.message").value("cursorMessageId가 올바르지 않습니다."));
+    }
+
+    @Test
     @DisplayName("size가 0이면 400과 공통 검증 에러를 반환한다")
     void getMessagesRejectsNonPositiveSize() throws Exception {
         ChatRoom room = createRoomWithMembers("title", PostStatus.OPEN, true).room();

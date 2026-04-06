@@ -15,7 +15,6 @@ public interface ChatMessageRepository extends JpaRepository<ChatMessage, Long> 
     @Query("""
         select message
         from ChatMessage message
-        join fetch message.room
         join fetch message.sender
         where message.room.id = :roomId
         order by message.id desc
@@ -25,13 +24,17 @@ public interface ChatMessageRepository extends JpaRepository<ChatMessage, Long> 
     @Query("""
         select message
         from ChatMessage message
-        join fetch message.room
         join fetch message.sender
         where message.room.id = :roomId
-          and message.id < :cursorMessageId
+          and message.id <= (
+            select cursor.id
+            from ChatMessage cursor
+            where cursor.id = :cursorMessageId
+              and cursor.room.id = :roomId
+          )
         order by message.id desc
         """)
-    List<ChatMessage> findRecentMessagesBeforeCursor(
+    List<ChatMessage> findRecentMessagesAtOrBeforeCursor(
         @Param("roomId") Long roomId,
         @Param("cursorMessageId") Long cursorMessageId,
         org.springframework.data.domain.Pageable pageable
