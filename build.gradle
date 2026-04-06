@@ -47,3 +47,21 @@ dependencies {
 tasks.named('test') {
     useJUnitPlatform()
 }
+
+tasks.register('baselineMeasurement', Test) {
+    group = 'verification'
+    description = 'Runs repeatable baseline measurement tests for Issue 17.'
+    useJUnitPlatform()
+    testClassesDirs = sourceSets.test.output.classesDirs
+    classpath = sourceSets.test.runtimeClasspath
+    minHeapSize = '1g'
+    maxHeapSize = '1g'
+    include '**/BaselineMeasurementTest.class'
+    systemProperty 'baseline.measurement.enabled', 'true'
+    shouldRunAfter tasks.named('test')
+    outputs.upToDateWhen { false }
+
+    testLogging {
+        events 'passed', 'failed'
+    }
+}

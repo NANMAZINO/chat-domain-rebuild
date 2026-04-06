@@ -26,7 +26,6 @@ import org.springframework.data.jpa.domain.support.AuditingEntityListener;
 @Table(
     name = "chat_messages",
     indexes = {
-        @Index(name = "idx_chat_messages_room_id_id_desc", columnList = "room_id, id desc"),
         @Index(name = "idx_chat_messages_sender_id_created_at", columnList = "sender_id, created_at desc")
     }
 )
