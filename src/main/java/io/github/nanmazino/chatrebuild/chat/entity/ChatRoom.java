@@ -28,6 +28,8 @@ import lombok.NoArgsConstructor;
 @NoArgsConstructor(access = AccessLevel.PROTECTED)
 public class ChatRoom extends BaseTimeEntity {
 
+    private static final int LAST_MESSAGE_PREVIEW_MAX_LENGTH = 255;
+
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
@@ -42,7 +44,7 @@ public class ChatRoom extends BaseTimeEntity {
     @Column
     private Long lastMessageId;
 
-    @Column(length = 255)
+    @Column(length = LAST_MESSAGE_PREVIEW_MAX_LENGTH)
     private String lastMessagePreview;
 
     @Column
@@ -63,5 +65,21 @@ public class ChatRoom extends BaseTimeEntity {
         }
 
         this.memberCount--;
+    }
+
+    public void updateLastMessageSummary(Long lastMessageId, String lastMessageContent,
+        LocalDateTime lastMessageAt) {
+        this.lastMessageId = lastMessageId;
+        this.lastMessagePreview = truncateLastMessagePreview(lastMessageContent);
+        this.lastMessageAt = lastMessageAt;
+    }
+
+    private String truncateLastMessagePreview(String lastMessageContent) {
+        if (lastMessageContent == null
+            || lastMessageContent.length() <= LAST_MESSAGE_PREVIEW_MAX_LENGTH) {
+            return lastMessageContent;
+        }
+
+        return lastMessageContent.substring(0, LAST_MESSAGE_PREVIEW_MAX_LENGTH);
     }
 }

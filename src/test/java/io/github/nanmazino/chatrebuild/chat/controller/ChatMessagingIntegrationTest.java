@@ -123,6 +123,8 @@ class ChatMessagingIntegrationTest extends IntegrationTestSupport {
         ChatMessage savedMessage = chatMessageRepository.findAll().stream()
             .findFirst()
             .orElseThrow(() -> new AssertionError("저장된 메시지가 있어야 합니다."));
+        ChatRoom refreshedRoom = chatRoomRepository.findById(room.getId())
+            .orElseThrow(() -> new AssertionError("채팅방이 유지되어야 합니다."));
 
         assertThat(RawStompTestClient.frameCommand(frame)).isEqualTo("MESSAGE");
         assertThat(body.path("roomId").asLong()).isEqualTo(room.getId());
@@ -137,6 +139,9 @@ class ChatMessagingIntegrationTest extends IntegrationTestSupport {
         assertThat(savedMessage.getSender().getId()).isEqualTo(author.getId());
         assertThat(savedMessage.getContent()).isEqualTo("오늘 7시로 확정할게요");
         assertThat(savedMessage.getType()).isEqualTo(ChatMessageType.TEXT);
+        assertThat(refreshedRoom.getLastMessageId()).isEqualTo(savedMessage.getId());
+        assertThat(refreshedRoom.getLastMessagePreview()).isEqualTo("오늘 7시로 확정할게요");
+        assertThat(refreshedRoom.getLastMessageAt()).isEqualTo(savedMessage.getCreatedAt());
     }
 
     @Test

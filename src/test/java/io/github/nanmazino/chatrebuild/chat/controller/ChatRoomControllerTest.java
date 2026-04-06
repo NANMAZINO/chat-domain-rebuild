@@ -100,18 +100,8 @@ class ChatRoomControllerTest extends IntegrationTestSupport {
     @DisplayName("ACTIVE 멤버는 내 채팅방 목록을 최종 응답 계약으로 조회할 수 있다")
     void getChatRoomsSuccess() throws Exception {
         RoomFixture fixture = createRoomWithMembers("강남역 저녁", PostStatus.OPEN, true);
-        ChatMessage first = chatMessageRepository.save(new ChatMessage(
-            fixture.room(),
-            author,
-            "첫 메시지",
-            ChatMessageType.TEXT
-        ));
-        ChatMessage latest = chatMessageRepository.save(new ChatMessage(
-            fixture.room(),
-            activeMember,
-            "오늘 7시로 확정할게요",
-            ChatMessageType.TEXT
-        ));
+        ChatMessage first = saveMessageAndStoreSummary(fixture.room(), author, "첫 메시지");
+        ChatMessage latest = saveMessageAndStoreSummary(fixture.room(), activeMember, "오늘 7시로 확정할게요");
         markLastReadMessage(fixture.activeMemberMember(), first.getId());
         String accessToken = jwtTokenProvider.generateAccessToken(activeMember.getId(), activeMember.getEmail());
 
@@ -139,12 +129,7 @@ class ChatRoomControllerTest extends IntegrationTestSupport {
     @DisplayName("ACTIVE 멤버는 CLOSED 또는 DELETED 게시글의 채팅방 summary도 조회할 수 있다")
     void getChatRoomSummarySuccessForClosedOrDeletedPost() throws Exception {
         RoomFixture fixture = createRoomWithMembers("삭제된 게시글 방", PostStatus.DELETED, true);
-        ChatMessage latest = chatMessageRepository.save(new ChatMessage(
-            fixture.room(),
-            author,
-            "삭제된 게시글이어도 조회됩니다",
-            ChatMessageType.TEXT
-        ));
+        ChatMessage latest = saveMessageAndStoreSummary(fixture.room(), author, "삭제된 게시글이어도 조회됩니다");
         String accessToken = jwtTokenProvider.generateAccessToken(activeMember.getId(), activeMember.getEmail());
 
         mockMvc.perform(get("/api/chat-rooms/" + fixture.room().getId())
@@ -328,6 +313,13 @@ class ChatRoomControllerTest extends IntegrationTestSupport {
         ReflectionTestUtils.setField(member, "lastReadMessageId", lastReadMessageId);
         ReflectionTestUtils.setField(member, "lastReadAt", LocalDateTime.now());
         chatRoomMemberRepository.saveAndFlush(member);
+    }
+
+    private ChatMessage saveMessageAndStoreSummary(ChatRoom room, User sender, String content) {
+        ChatMessage message = chatMessageRepository.save(new ChatMessage(room, sender, content, ChatMessageType.TEXT));
+        room.updateLastMessageSummary(message.getId(), message.getContent(), message.getCreatedAt());
+        chatRoomRepository.saveAndFlush(room);
+        return message;
     }
 
     private record RoomFixture(

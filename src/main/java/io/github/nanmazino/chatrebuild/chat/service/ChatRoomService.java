@@ -3,14 +3,12 @@ package io.github.nanmazino.chatrebuild.chat.service;
 import io.github.nanmazino.chatrebuild.chat.dto.response.ChatRoomDetailResponse;
 import io.github.nanmazino.chatrebuild.chat.dto.response.ChatRoomListResponse;
 import io.github.nanmazino.chatrebuild.chat.dto.response.ChatRoomSummaryResponse;
-import io.github.nanmazino.chatrebuild.chat.entity.ChatMessage;
 import io.github.nanmazino.chatrebuild.chat.entity.ChatRoomMember;
 import io.github.nanmazino.chatrebuild.chat.entity.ChatRoomMemberStatus;
 import io.github.nanmazino.chatrebuild.chat.exception.InvalidChatRoomCursorException;
 import io.github.nanmazino.chatrebuild.chat.repository.ChatMessageRepository;
 import io.github.nanmazino.chatrebuild.chat.repository.ChatRoomMemberRepository;
 import java.time.LocalDateTime;
-import java.util.Comparator;
 import java.util.List;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
@@ -20,10 +18,6 @@ import org.springframework.transaction.annotation.Transactional;
 @RequiredArgsConstructor
 @Transactional(readOnly = true)
 public class ChatRoomService {
-
-    private static final Comparator<RoomSnapshot> ROOM_ORDER = Comparator
-        .comparing(RoomSnapshot::lastMessageAt, Comparator.nullsLast(Comparator.reverseOrder()))
-        .thenComparing(RoomSnapshot::roomId, Comparator.reverseOrder());
 
     private final ChatMembershipService chatMembershipService;
     private final ChatRoomMemberRepository chatRoomMemberRepository;
@@ -45,7 +39,6 @@ public class ChatRoomService {
             )
             .stream()
             .map(this::resolveRoomSnapshot)
-            .sorted(ROOM_ORDER)
             .filter(snapshot -> isAfterCursor(snapshot, cursorLastMessageAt, cursorRoomId))
             .toList();
 
@@ -77,19 +70,14 @@ public class ChatRoomService {
 
     private RoomSnapshot resolveRoomSnapshot(ChatRoomMember activeMember) {
         Long roomId = activeMember.getRoom().getId();
-        ChatMessage lastMessage = chatMessageRepository.findTopByRoomIdOrderByCreatedAtDescIdDesc(roomId)
-            .orElse(null);
-
-        // chat_rooms.lastMessage* summary 컬럼은 아직 저장 시점 정합성을 보장하지 않으므로
-        // baseline 조회에서는 source of truth인 chat_messages/chat_room_members를 기준으로 계산한다.
         return new RoomSnapshot(
             roomId,
             activeMember.getRoom().getPost().getId(),
             activeMember.getRoom().getPost().getTitle(),
             activeMember.getRoom().getMemberCount(),
-            lastMessage == null ? null : lastMessage.getId(),
-            lastMessage == null ? null : lastMessage.getContent(),
-            lastMessage == null ? null : lastMessage.getCreatedAt(),
+            activeMember.getRoom().getLastMessageId(),
+            activeMember.getRoom().getLastMessagePreview(),
+            activeMember.getRoom().getLastMessageAt(),
             activeMember.getLastReadMessageId(),
             calculateUnreadCount(roomId, activeMember.getLastReadMessageId())
         );

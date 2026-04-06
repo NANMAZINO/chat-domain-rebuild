@@ -25,6 +25,10 @@ public interface ChatRoomMemberRepository extends JpaRepository<ChatRoomMember, 
             :keyword is null
             or lower(post.title) like lower(concat('%', :keyword, '%'))
           )
+        order by
+          case when room.lastMessageAt is null then 1 else 0 end,
+          room.lastMessageAt desc,
+          room.id desc
         """)
     List<ChatRoomMember> findAllByUserIdAndStatusWithRoomAndPost(
         @Param("userId") Long userId,

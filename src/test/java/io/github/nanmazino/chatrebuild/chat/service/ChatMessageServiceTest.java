@@ -81,6 +81,8 @@ class ChatMessageServiceTest extends IntegrationTestSupport {
 
         ChatMessage savedMessage = chatMessageRepository.findById(response.messageId())
             .orElseThrow(() -> new AssertionError("저장된 메시지가 있어야 합니다."));
+        ChatRoom refreshedRoom = chatRoomRepository.findById(room.getId())
+            .orElseThrow(() -> new AssertionError("채팅방이 유지되어야 합니다."));
 
         assertThat(chatMessageRepository.countByRoomId(room.getId())).isEqualTo(1);
         assertThat(response.roomId()).isEqualTo(room.getId());
@@ -94,6 +96,30 @@ class ChatMessageServiceTest extends IntegrationTestSupport {
         assertThat(savedMessage.getContent()).isEqualTo("안녕하세요");
         assertThat(savedMessage.getType()).isEqualTo(ChatMessageType.TEXT);
         assertThat(savedMessage.getCreatedAt()).isNotNull();
+        assertThat(refreshedRoom.getLastMessageId()).isEqualTo(savedMessage.getId());
+        assertThat(refreshedRoom.getLastMessagePreview()).isEqualTo("안녕하세요");
+        assertThat(refreshedRoom.getLastMessageAt()).isEqualTo(savedMessage.getCreatedAt());
+    }
+
+    @Test
+    @DisplayName("메시지 저장 시 lastMessagePreview는 255자로 잘라 저장한다")
+    void sendMessageTruncatesSummaryPreviewToColumnLength() {
+        MessageFixture fixture = createMessageFixture(PostStatus.OPEN);
+        String longContent = "a".repeat(300);
+
+        ChatMessageResponse response = chatMessageService.sendMessage(
+            fixture.room().getId(),
+            fixture.member().getId(),
+            new ChatSendRequest(longContent, ChatMessageType.TEXT)
+        );
+
+        ChatRoom refreshedRoom = chatRoomRepository.findById(fixture.room().getId())
+            .orElseThrow(() -> new AssertionError("채팅방이 유지되어야 합니다."));
+
+        assertThat(response.content()).isEqualTo(longContent);
+        assertThat(refreshedRoom.getLastMessageId()).isEqualTo(response.messageId());
+        assertThat(refreshedRoom.getLastMessagePreview()).hasSize(255);
+        assertThat(refreshedRoom.getLastMessagePreview()).isEqualTo(longContent.substring(0, 255));
     }
 
     @Test
