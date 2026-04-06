@@ -3,11 +3,9 @@ package io.github.nanmazino.chatrebuild.chat.service;
 import io.github.nanmazino.chatrebuild.chat.dto.response.ChatRoomDetailResponse;
 import io.github.nanmazino.chatrebuild.chat.dto.response.ChatRoomListResponse;
 import io.github.nanmazino.chatrebuild.chat.dto.response.ChatRoomSummaryResponse;
+import io.github.nanmazino.chatrebuild.chat.query.ChatRoomQueryRepository;
 import io.github.nanmazino.chatrebuild.chat.entity.ChatRoomMember;
-import io.github.nanmazino.chatrebuild.chat.entity.ChatRoomMemberStatus;
 import io.github.nanmazino.chatrebuild.chat.exception.InvalidChatRoomCursorException;
-import io.github.nanmazino.chatrebuild.chat.repository.ChatMessageRepository;
-import io.github.nanmazino.chatrebuild.chat.repository.ChatRoomMemberRepository;
 import java.time.LocalDateTime;
 import java.util.List;
 import lombok.RequiredArgsConstructor;
@@ -20,8 +18,7 @@ import org.springframework.transaction.annotation.Transactional;
 public class ChatRoomService {
 
     private final ChatMembershipService chatMembershipService;
-    private final ChatRoomMemberRepository chatRoomMemberRepository;
-    private final ChatMessageRepository chatMessageRepository;
+    private final ChatRoomQueryRepository chatRoomQueryRepository;
 
     public ChatRoomListResponse getChatRooms(
         Long userId,
@@ -32,20 +29,16 @@ public class ChatRoomService {
     ) {
         validateCursor(cursorLastMessageAt, cursorRoomId);
 
-        List<RoomSnapshot> roomSnapshots = chatRoomMemberRepository.findAllByUserIdAndStatusWithRoomAndPost(
-                userId,
-                ChatRoomMemberStatus.ACTIVE,
-                normalizeKeyword(keyword)
-            )
-            .stream()
-            .map(this::resolveRoomSnapshot)
-            .filter(snapshot -> isAfterCursor(snapshot, cursorLastMessageAt, cursorRoomId))
-            .toList();
-
-        boolean hasNext = roomSnapshots.size() > size;
-        List<ChatRoomSummaryResponse> items = roomSnapshots.stream()
+        List<ChatRoomSummaryResponse> fetchedItems = chatRoomQueryRepository.findMyChatRooms(
+            userId,
+            cursorLastMessageAt,
+            cursorRoomId,
+            size,
+            normalizeKeyword(keyword)
+        );
+        boolean hasNext = fetchedItems.size() > size;
+        List<ChatRoomSummaryResponse> items = fetchedItems.stream()
             .limit(size)
-            .map(RoomSnapshot::toSummaryResponse)
             .toList();
 
         if (!hasNext || items.isEmpty()) {
@@ -64,51 +57,15 @@ public class ChatRoomService {
 
     public ChatRoomDetailResponse getChatRoom(Long roomId, Long userId) {
         ChatRoomMember activeMember = chatMembershipService.getActiveMember(roomId, userId);
-
-        return resolveRoomSnapshot(activeMember).toDetailResponse();
-    }
-
-    private RoomSnapshot resolveRoomSnapshot(ChatRoomMember activeMember) {
-        Long roomId = activeMember.getRoom().getId();
-        return new RoomSnapshot(
-            roomId,
+        return new ChatRoomDetailResponse(
+            activeMember.getRoom().getId(),
             activeMember.getRoom().getPost().getId(),
             activeMember.getRoom().getPost().getTitle(),
             activeMember.getRoom().getMemberCount(),
             activeMember.getRoom().getLastMessageId(),
             activeMember.getRoom().getLastMessagePreview(),
-            activeMember.getRoom().getLastMessageAt(),
-            activeMember.getLastReadMessageId(),
-            calculateUnreadCount(roomId, activeMember.getLastReadMessageId())
+            activeMember.getRoom().getLastMessageAt()
         );
-    }
-
-    private long calculateUnreadCount(Long roomId, Long lastReadMessageId) {
-        if (lastReadMessageId == null) {
-            return chatMessageRepository.countByRoomId(roomId);
-        }
-
-        return chatMessageRepository.countByRoomIdAndIdGreaterThan(roomId, lastReadMessageId);
-    }
-
-    private boolean isAfterCursor(RoomSnapshot snapshot, LocalDateTime cursorLastMessageAt, Long cursorRoomId) {
-        if (cursorLastMessageAt == null && cursorRoomId == null) {
-            return true;
-        }
-
-        if (cursorLastMessageAt == null) {
-            return snapshot.lastMessageAt() == null && snapshot.roomId() < cursorRoomId;
-        }
-
-        if (snapshot.lastMessageAt() == null) {
-            return true;
-        }
-
-        if (snapshot.lastMessageAt().isBefore(cursorLastMessageAt)) {
-            return true;
-        }
-
-        return snapshot.lastMessageAt().isEqual(cursorLastMessageAt) && snapshot.roomId() < cursorRoomId;
     }
 
     private void validateCursor(LocalDateTime cursorLastMessageAt, Long cursorRoomId) {
@@ -123,44 +80,5 @@ public class ChatRoomService {
         }
 
         return keyword.trim();
-    }
-
-    private record RoomSnapshot(
-        Long roomId,
-        Long postId,
-        String postTitle,
-        int memberCount,
-        Long lastMessageId,
-        String lastMessagePreview,
-        LocalDateTime lastMessageAt,
-        Long lastReadMessageId,
-        long unreadCount
-    ) {
-
-        private ChatRoomSummaryResponse toSummaryResponse() {
-            return new ChatRoomSummaryResponse(
-                roomId,
-                postId,
-                postTitle,
-                memberCount,
-                lastMessageId,
-                lastMessagePreview,
-                lastMessageAt,
-                lastReadMessageId,
-                unreadCount
-            );
-        }
-
-        private ChatRoomDetailResponse toDetailResponse() {
-            return new ChatRoomDetailResponse(
-                roomId,
-                postId,
-                postTitle,
-                memberCount,
-                lastMessageId,
-                lastMessagePreview,
-                lastMessageAt
-            );
-        }
     }
 }
