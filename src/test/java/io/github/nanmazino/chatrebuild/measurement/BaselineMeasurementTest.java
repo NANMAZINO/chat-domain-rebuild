@@ -223,6 +223,7 @@ class BaselineMeasurementTest extends IntegrationTestSupport {
 
     private void createMessages(ChatRoom room, User author, User participant, int roomIndex, int messageCount) {
         List<ChatMessage> batch = new ArrayList<>(MESSAGE_BATCH_SIZE);
+        ChatMessage latestMessage = null;
 
         for (int messageIndex = 1; messageIndex <= messageCount; messageIndex++) {
             User sender = messageIndex % 2 == 0 ? author : participant;
@@ -234,14 +235,29 @@ class BaselineMeasurementTest extends IntegrationTestSupport {
             ));
 
             if (batch.size() == MESSAGE_BATCH_SIZE) {
-                chatMessageRepository.saveAll(batch);
-                batch.clear();
+                latestMessage = saveMessageBatch(batch);
             }
         }
 
         if (!batch.isEmpty()) {
-            chatMessageRepository.saveAll(batch);
+            latestMessage = saveMessageBatch(batch);
         }
+
+        if (latestMessage != null) {
+            room.updateLastMessageSummary(
+                latestMessage.getId(),
+                latestMessage.getContent(),
+                latestMessage.getCreatedAt()
+            );
+            chatRoomRepository.saveAndFlush(room);
+        }
+    }
+
+    private ChatMessage saveMessageBatch(List<ChatMessage> batch) {
+        List<ChatMessage> savedBatch = chatMessageRepository.saveAll(batch);
+        ChatMessage latestMessage = savedBatch.get(savedBatch.size() - 1);
+        batch.clear();
+        return latestMessage;
     }
 
     private Long resolveHistoryCursorMessageId(Long roomId) {

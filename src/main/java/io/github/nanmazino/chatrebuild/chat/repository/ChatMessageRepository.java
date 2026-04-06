@@ -2,7 +2,6 @@ package io.github.nanmazino.chatrebuild.chat.repository;
 
 import io.github.nanmazino.chatrebuild.chat.entity.ChatMessage;
 import java.util.List;
-import java.util.Optional;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
@@ -12,8 +11,6 @@ public interface ChatMessageRepository extends JpaRepository<ChatMessage, Long> 
     long countByRoomId(Long roomId);
 
     long countByRoomIdAndIdGreaterThan(Long roomId, Long messageId);
-
-    Optional<ChatMessage> findTopByRoomIdOrderByCreatedAtDescIdDesc(Long roomId);
 
     @Query("""
         select message

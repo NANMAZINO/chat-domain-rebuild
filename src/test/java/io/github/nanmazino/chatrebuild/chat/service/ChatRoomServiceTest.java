@@ -83,9 +83,20 @@ class ChatRoomServiceTest extends IntegrationTestSupport {
         RoomFixture nullBucketLowerRoom = createRoom("null-bucket-lower-room", PostStatus.OPEN);
         RoomFixture nullBucketHigherRoom = createRoom("null-bucket-higher-room", PostStatus.OPEN);
 
-        saveMessage(oldRoom.room(), author, "old-message", LocalDateTime.of(2026, 4, 2, 19, 0));
-        saveMessage(sameTimeLowerRoom.room(), author, "same-time-lower-message", LocalDateTime.of(2026, 4, 2, 20, 30));
-        saveMessage(sameTimeHigherRoom.room(), author, "same-time-higher-message", LocalDateTime.of(2026, 4, 2, 20, 30));
+        storeRoomSummary(oldRoom.room(),
+            saveMessage(oldRoom.room(), author, "old-message", LocalDateTime.of(2026, 4, 2, 19, 0)));
+        storeRoomSummary(sameTimeLowerRoom.room(), saveMessage(
+            sameTimeLowerRoom.room(),
+            author,
+            "same-time-lower-message",
+            LocalDateTime.of(2026, 4, 2, 20, 30)
+        ));
+        storeRoomSummary(sameTimeHigherRoom.room(), saveMessage(
+            sameTimeHigherRoom.room(),
+            author,
+            "same-time-higher-message",
+            LocalDateTime.of(2026, 4, 2, 20, 30)
+        ));
 
         ChatRoomListResponse response = chatRoomService.getChatRooms(member.getId(), null, null, 10, null);
 
@@ -113,9 +124,20 @@ class ChatRoomServiceTest extends IntegrationTestSupport {
         RoomFixture sameTimeHigherRoom = createRoom("same-time-higher-room", PostStatus.OPEN);
         RoomFixture nullBucketRoom = createRoom("null-bucket-room", PostStatus.OPEN);
 
-        saveMessage(latestRoom.room(), author, "latest-message", LocalDateTime.of(2026, 4, 2, 21, 0));
-        saveMessage(sameTimeLowerRoom.room(), author, "same-time-lower-message", LocalDateTime.of(2026, 4, 2, 20, 0));
-        saveMessage(sameTimeHigherRoom.room(), author, "same-time-higher-message", LocalDateTime.of(2026, 4, 2, 20, 0));
+        storeRoomSummary(latestRoom.room(),
+            saveMessage(latestRoom.room(), author, "latest-message", LocalDateTime.of(2026, 4, 2, 21, 0)));
+        storeRoomSummary(sameTimeLowerRoom.room(), saveMessage(
+            sameTimeLowerRoom.room(),
+            author,
+            "same-time-lower-message",
+            LocalDateTime.of(2026, 4, 2, 20, 0)
+        ));
+        storeRoomSummary(sameTimeHigherRoom.room(), saveMessage(
+            sameTimeHigherRoom.room(),
+            author,
+            "same-time-higher-message",
+            LocalDateTime.of(2026, 4, 2, 20, 0)
+        ));
 
         ChatRoomListResponse firstPage = chatRoomService.getChatRooms(member.getId(), null, null, 2, null);
         ChatRoomListResponse nextPage = chatRoomService.getChatRooms(
@@ -148,7 +170,12 @@ class ChatRoomServiceTest extends IntegrationTestSupport {
         RoomFixture nullBucketLowerRoom = createRoom("null-bucket-lower-room", PostStatus.OPEN);
         RoomFixture nullBucketHigherRoom = createRoom("null-bucket-higher-room", PostStatus.OPEN);
 
-        saveMessage(roomWithMessage.room(), author, "visible-before-null-bucket", LocalDateTime.of(2026, 4, 2, 21, 0));
+        storeRoomSummary(roomWithMessage.room(), saveMessage(
+            roomWithMessage.room(),
+            author,
+            "visible-before-null-bucket",
+            LocalDateTime.of(2026, 4, 2, 21, 0)
+        ));
 
         ChatRoomListResponse response = chatRoomService.getChatRooms(
             member.getId(),
@@ -170,7 +197,8 @@ class ChatRoomServiceTest extends IntegrationTestSupport {
 
         saveMessage(room.room(), author, "message-1", LocalDateTime.of(2026, 4, 2, 19, 0));
         saveMessage(room.room(), member, "message-2", LocalDateTime.of(2026, 4, 2, 19, 5));
-        saveMessage(room.room(), author, "message-3", LocalDateTime.of(2026, 4, 2, 19, 10));
+        ChatMessage latest = saveMessage(room.room(), author, "message-3", LocalDateTime.of(2026, 4, 2, 19, 10));
+        storeRoomSummary(room.room(), latest);
 
         ChatRoomSummaryResponse response = chatRoomService.getChatRooms(member.getId(), null, null, 10, null)
             .items()
@@ -181,12 +209,13 @@ class ChatRoomServiceTest extends IntegrationTestSupport {
     }
 
     @Test
-    @DisplayName("latest summary는 messageId가 아니라 createdAt desc, id desc 기준으로 계산한다")
-    void getChatRoomsUsesLatestMessageByCreatedAtThenId() {
+    @DisplayName("room list summary는 chat_rooms에 저장된 값을 그대로 사용한다")
+    void getChatRoomsUsesStoredSummaryValues() {
         RoomFixture room = createRoom("summary-clock-skew-room", PostStatus.OPEN);
 
         ChatMessage laterByTime = saveMessage(room.room(), author, "later-by-time", LocalDateTime.of(2026, 4, 2, 21, 0));
         ChatMessage laterById = saveMessage(room.room(), member, "later-by-id", LocalDateTime.of(2026, 4, 2, 20, 0));
+        storeRoomSummary(room.room(), laterByTime);
 
         ChatRoomSummaryResponse response = chatRoomService.getChatRooms(member.getId(), null, null, 10, null)
             .items()
@@ -208,7 +237,8 @@ class ChatRoomServiceTest extends IntegrationTestSupport {
 
         ChatMessage first = saveMessage(room.room(), author, "message-1", LocalDateTime.of(2026, 4, 2, 19, 0));
         ChatMessage second = saveMessage(room.room(), member, "message-2", LocalDateTime.of(2026, 4, 2, 19, 5));
-        saveMessage(room.room(), author, "message-3", LocalDateTime.of(2026, 4, 2, 19, 10));
+        ChatMessage latest = saveMessage(room.room(), author, "message-3", LocalDateTime.of(2026, 4, 2, 19, 10));
+        storeRoomSummary(room.room(), latest);
         markLastReadMessage(room.memberMembership(), second.getId());
 
         ChatRoomSummaryResponse response = chatRoomService.getChatRooms(member.getId(), null, null, 10, null)
@@ -226,8 +256,18 @@ class ChatRoomServiceTest extends IntegrationTestSupport {
         RoomFixture closedRoom = createRoom("closed-room", PostStatus.CLOSED);
         RoomFixture deletedRoom = createRoom("deleted-room", PostStatus.DELETED);
 
-        saveMessage(closedRoom.room(), author, "closed-room-message", LocalDateTime.of(2026, 4, 2, 19, 0));
-        saveMessage(deletedRoom.room(), author, "deleted-room-message", LocalDateTime.of(2026, 4, 2, 19, 10));
+        storeRoomSummary(closedRoom.room(), saveMessage(
+            closedRoom.room(),
+            author,
+            "closed-room-message",
+            LocalDateTime.of(2026, 4, 2, 19, 0)
+        ));
+        storeRoomSummary(deletedRoom.room(), saveMessage(
+            deletedRoom.room(),
+            author,
+            "deleted-room-message",
+            LocalDateTime.of(2026, 4, 2, 19, 10)
+        ));
 
         ChatRoomListResponse listResponse = chatRoomService.getChatRooms(member.getId(), null, null, 10, null);
         ChatRoomDetailResponse closedSummary = chatRoomService.getChatRoom(closedRoom.room().getId(), member.getId());
@@ -273,8 +313,14 @@ class ChatRoomServiceTest extends IntegrationTestSupport {
             Timestamp.valueOf(createdAt),
             message.getId()
         );
+        ReflectionTestUtils.setField(message, "createdAt", createdAt);
 
         return message;
+    }
+
+    private void storeRoomSummary(ChatRoom room, ChatMessage message) {
+        room.updateLastMessageSummary(message.getId(), message.getContent(), message.getCreatedAt());
+        chatRoomRepository.saveAndFlush(room);
     }
 
     private void markLastReadMessage(ChatRoomMember memberMembership, Long lastReadMessageId) {

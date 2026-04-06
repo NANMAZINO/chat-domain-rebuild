@@ -45,6 +45,11 @@ public class ChatMessageService {
             request.content(),
             request.type()
         ));
+        activeMember.getRoom().updateLastMessageSummary(
+            savedMessage.getId(),
+            savedMessage.getContent(),
+            savedMessage.getCreatedAt()
+        );
 
         return ChatMessageResponse.from(savedMessage);
     }
