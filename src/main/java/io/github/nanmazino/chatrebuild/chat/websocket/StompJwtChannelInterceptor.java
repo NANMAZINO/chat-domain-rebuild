@@ -2,7 +2,7 @@ package io.github.nanmazino.chatrebuild.chat.websocket;
 
 import io.github.nanmazino.chatrebuild.chat.exception.ChatMemberNotFoundException;
 import io.github.nanmazino.chatrebuild.chat.service.ChatMembershipService;
-import io.github.nanmazino.chatrebuild.chat.validation.ChatSendPayloadValidator;
+import io.github.nanmazino.chatrebuild.chat.websocket.validation.ChatSendPayloadValidator;
 import io.github.nanmazino.chatrebuild.global.security.CustomUserDetailsService;
 import io.github.nanmazino.chatrebuild.global.security.JwtAuthorizationTokenResolver;
 import io.github.nanmazino.chatrebuild.global.security.JwtPrincipal;
