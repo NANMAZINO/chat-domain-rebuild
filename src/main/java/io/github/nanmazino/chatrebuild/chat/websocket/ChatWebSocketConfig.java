@@ -1,6 +1,5 @@
-package io.github.nanmazino.chatrebuild.chat.config;
+package io.github.nanmazino.chatrebuild.chat.websocket;
 
-import io.github.nanmazino.chatrebuild.chat.websocket.StompJwtChannelInterceptor;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.messaging.simp.config.MessageBrokerRegistry;
 import org.springframework.messaging.simp.config.ChannelRegistration;

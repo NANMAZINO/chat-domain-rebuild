@@ -1,4 +1,4 @@
-package io.github.nanmazino.chatrebuild.chat.validation;
+package io.github.nanmazino.chatrebuild.chat.websocket.validation;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 import io.github.nanmazino.chatrebuild.chat.dto.request.ChatSendRequest;
