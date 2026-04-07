@@ -54,7 +54,7 @@ tasks.named('test') {
 
 tasks.register('baselineMeasurement', Test) {
     group = 'verification'
-    description = 'Runs repeatable baseline measurement tests for Issue 17.'
+    description = 'Runs repeatable chat measurement tests with the fixed baseline dataset.'
     useJUnitPlatform()
     testClassesDirs = sourceSets.test.output.classesDirs
     classpath = sourceSets.test.runtimeClasspath
@@ -62,6 +62,7 @@ tasks.register('baselineMeasurement', Test) {
     maxHeapSize = '1g'
     include '**/BaselineMeasurementTest.class'
     systemProperty 'baseline.measurement.enabled', 'true'
+    systemProperty 'baseline.measurement.strict', System.getProperty('baseline.measurement.strict', 'false')
     shouldRunAfter tasks.named('test')
     outputs.upToDateWhen { false }
 

@@ -47,7 +47,7 @@ src/main/resources/application-local.yml
 logs/
 
 ### Measurement outputs ###
-docs/measurements/baseline-latest.md
+docs/performance/measurements/baseline-latest.md
 
 ### Agent workspace ###
 .agents/
