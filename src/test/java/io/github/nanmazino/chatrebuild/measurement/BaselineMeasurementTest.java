@@ -72,7 +72,7 @@ class BaselineMeasurementTest extends IntegrationTestSupport {
     private static final double ALLOWED_ROOM_LIST_P95_DEVIATION_RATIO = 0.30;
     private static final double ALLOWED_HISTORY_P95_DEVIATION_RATIO = 0.30;
     private static final long ALLOWED_QUERY_COUNT_DEVIATION = 0L;
-    private static final Path REPORT_PATH = Path.of("docs", "measurements", "baseline-latest.md");
+    private static final Path REPORT_PATH = Path.of("docs", "performance", "measurements", "baseline-latest.md");
 
     @Autowired
     private MockMvc mockMvc;
@@ -146,7 +146,7 @@ class BaselineMeasurementTest extends IntegrationTestSupport {
         }
         assertThat(roomListQueryCount.maxDeviation())
             .withFailMessage(
-                "room list query count 편차가 허용 범위를 넘었습니다. counts=%s, maxDeviation=%d. 상세 측정값은 docs/measurements/baseline-latest.md를 확인하세요.",
+                "room list query count 편차가 허용 범위를 넘었습니다. counts=%s, maxDeviation=%d. 상세 측정값은 docs/performance/measurements/baseline-latest.md를 확인하세요.",
                 roomListQueryCount.counts(),
                 roomListQueryCount.maxDeviation()
             )
@@ -365,7 +365,7 @@ class BaselineMeasurementTest extends IntegrationTestSupport {
     private void assertP95StabilityWithinRange(EndpointStability stability, double allowedDeviationRatio) {
         assertThat(stability.deviationRatio())
             .withFailMessage(
-                "%s p95 편차가 허용 범위를 넘었습니다. min=%.3fms, median=%.3fms, max=%.3fms, deviation=%.2f%%, allowed=%.2f%%. 상세 측정값은 docs/measurements/baseline-latest.md를 확인하세요.",
+                "%s p95 편차가 허용 범위를 넘었습니다. min=%.3fms, median=%.3fms, max=%.3fms, deviation=%.2f%%, allowed=%.2f%%. 상세 측정값은 docs/performance/measurements/baseline-latest.md를 확인하세요.",
                 stability.label(),
                 toMillis(stability.minP95Nanos()),
                 toMillis(stability.medianP95Nanos()),
@@ -401,7 +401,7 @@ class BaselineMeasurementTest extends IntegrationTestSupport {
         boolean strictStabilityCheckEnabled
     ) {
         return """
-            # Baseline Measurement Report
+            # Chat Measurement Report (Baseline Harness)
 
             - generatedAt: %s
             - javaVersion: %s
@@ -426,7 +426,9 @@ class BaselineMeasurementTest extends IntegrationTestSupport {
               - roomListQueryCount: %d
             - strictStabilityCheckEnabled: %s
             - baselineNotes:
-              - latest report is stored under `docs/measurements` because `build/` is disposable output.
+              - this is the latest raw result measured with the fixed baseline dataset and iteration rules.
+              - keep tracked snapshots under `docs/performance/measurements` for official comparisons and archives.
+              - overwrite this file on each local rerun and do not use it as the official before or after reference.
               - default run records p95 stability as PASS/WARN and does not fail the task.
               - use `-Dbaseline.measurement.strict=true` if you want p95 stability to fail the task.
 
