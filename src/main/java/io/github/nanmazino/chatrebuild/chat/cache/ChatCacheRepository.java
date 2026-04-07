@@ -11,7 +11,7 @@ import org.springframework.stereotype.Repository;
 @RequiredArgsConstructor
 public class ChatCacheRepository {
 
-    private static final Duration ROOM_SUMMARY_TTL = Duration.ofMinutes(10);
+    private static final Duration CACHE_TTL = Duration.ofHours(1);
     private static final String ROOM_SUMMARY_KEY_PREFIX = "chat:room-summary:";
 
     private final RedisTemplate<String, ChatRoomDetailResponse> chatRoomSummaryRedisTemplate;
@@ -21,7 +21,7 @@ public class ChatCacheRepository {
     }
 
     public void saveRoomSummary(Long roomId, ChatRoomDetailResponse response) {
-        chatRoomSummaryRedisTemplate.opsForValue().set(roomSummaryKey(roomId), response, ROOM_SUMMARY_TTL);
+        chatRoomSummaryRedisTemplate.opsForValue().set(roomSummaryKey(roomId), response, CACHE_TTL);
     }
 
     public void evictRoomSummary(Long roomId) {

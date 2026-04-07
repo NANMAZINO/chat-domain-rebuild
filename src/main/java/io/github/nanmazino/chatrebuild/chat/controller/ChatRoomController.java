@@ -29,7 +29,6 @@ import org.springframework.web.bind.annotation.RestController;
 @Tag(name = "ChatRoom", description = "채팅방 조회 API")
 public class ChatRoomController {
 
-    private static final int DEFAULT_ROOM_LIST_SIZE = 20;
     private static final int DEFAULT_HISTORY_SIZE = 30;
 
     private final ChatRoomService chatRoomService;
@@ -52,7 +51,7 @@ public class ChatRoomController {
             principal.userId(),
             cursorLastMessageAt,
             cursorRoomId,
-            size == null ? DEFAULT_ROOM_LIST_SIZE : size,
+            size == null ? ChatRoomService.DEFAULT_ROOM_LIST_SIZE : size,
             keyword
         );
 

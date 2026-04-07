@@ -1,5 +1,7 @@
 package io.github.nanmazino.chatrebuild.support;
 
+import org.junit.jupiter.api.AfterEach;
+import org.testcontainers.containers.Container;
 import org.springframework.test.context.DynamicPropertyRegistry;
 import org.springframework.test.context.DynamicPropertySource;
 import org.testcontainers.containers.GenericContainer;
@@ -30,5 +32,14 @@ public abstract class IntegrationTestSupport {
         registry.add("spring.datasource.driver-class-name", MYSQL_CONTAINER::getDriverClassName);
         registry.add("spring.data.redis.host", REDIS_CONTAINER::getHost);
         registry.add("spring.data.redis.port", () -> REDIS_CONTAINER.getMappedPort(6379));
+    }
+
+    @AfterEach
+    void flushRedis() throws Exception {
+        Container.ExecResult result = REDIS_CONTAINER.execInContainer("redis-cli", "FLUSHDB");
+
+        if (result.getExitCode() != 0) {
+            throw new IllegalStateException("Redis flush failed: " + result.getStderr());
+        }
     }
 }
