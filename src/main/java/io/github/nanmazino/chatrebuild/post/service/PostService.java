@@ -1,5 +1,6 @@
 package io.github.nanmazino.chatrebuild.post.service;
 
+import io.github.nanmazino.chatrebuild.chat.cache.ChatCacheService;
 import io.github.nanmazino.chatrebuild.chat.entity.ChatRoom;
 import io.github.nanmazino.chatrebuild.chat.entity.ChatRoomMember;
 import io.github.nanmazino.chatrebuild.chat.entity.ChatRoomMemberStatus;
@@ -40,6 +41,7 @@ public class PostService {
     private static final int DEFAULT_PAGE = 0;
     private static final int DEFAULT_SIZE = 20;
 
+    private final ChatCacheService chatCacheService;
     private final PostRepository postRepository;
     private final ChatRoomRepository chatRoomRepository;
     private final ChatRoomMemberRepository chatRoomMemberRepository;
@@ -152,6 +154,7 @@ public class PostService {
 
         post.update(request.title(), request.content(), request.maxParticipants());
         Post updatedPost = postRepository.saveAndFlush(post);
+        chatCacheService.evictRoomSummaryAfterCommit(updatedPost.getChatRoom().getId());
 
         return new PostDetailResponse(
             updatedPost.getId(),

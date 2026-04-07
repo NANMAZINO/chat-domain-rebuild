@@ -1,10 +1,11 @@
 package io.github.nanmazino.chatrebuild.chat.service;
 
+import io.github.nanmazino.chatrebuild.chat.cache.ChatCacheService;
 import io.github.nanmazino.chatrebuild.chat.dto.response.ChatRoomDetailResponse;
 import io.github.nanmazino.chatrebuild.chat.dto.response.ChatRoomListResponse;
 import io.github.nanmazino.chatrebuild.chat.dto.response.ChatRoomSummaryResponse;
 import io.github.nanmazino.chatrebuild.chat.query.ChatRoomQueryRepository;
-import io.github.nanmazino.chatrebuild.chat.entity.ChatRoomMember;
+import io.github.nanmazino.chatrebuild.chat.repository.ChatRoomRepository;
 import io.github.nanmazino.chatrebuild.chat.exception.InvalidChatRoomCursorException;
 import java.time.LocalDateTime;
 import java.util.List;
@@ -17,8 +18,10 @@ import org.springframework.transaction.annotation.Transactional;
 @Transactional(readOnly = true)
 public class ChatRoomService {
 
+    private final ChatCacheService chatCacheService;
     private final ChatMembershipService chatMembershipService;
     private final ChatRoomQueryRepository chatRoomQueryRepository;
+    private final ChatRoomRepository chatRoomRepository;
 
     public ChatRoomListResponse getChatRooms(
         Long userId,
@@ -56,16 +59,8 @@ public class ChatRoomService {
     }
 
     public ChatRoomDetailResponse getChatRoom(Long roomId, Long userId) {
-        ChatRoomMember activeMember = chatMembershipService.getActiveMember(roomId, userId);
-        return new ChatRoomDetailResponse(
-            activeMember.getRoom().getId(),
-            activeMember.getRoom().getPost().getId(),
-            activeMember.getRoom().getPost().getTitle(),
-            activeMember.getRoom().getMemberCount(),
-            activeMember.getRoom().getLastMessageId(),
-            activeMember.getRoom().getLastMessagePreview(),
-            activeMember.getRoom().getLastMessageAt()
-        );
+        chatMembershipService.validateActiveMember(roomId, userId);
+        return chatCacheService.getOrLoadRoomSummary(roomId, () -> loadRoomSummary(roomId));
     }
 
     private void validateCursor(LocalDateTime cursorLastMessageAt, Long cursorRoomId) {
@@ -80,5 +75,10 @@ public class ChatRoomService {
         }
 
         return keyword.trim();
+    }
+
+    private ChatRoomDetailResponse loadRoomSummary(Long roomId) {
+        return chatRoomRepository.findRoomSummaryById(roomId)
+            .orElseThrow(() -> new IllegalStateException("채팅방 summary를 찾을 수 없습니다."));
     }
 }

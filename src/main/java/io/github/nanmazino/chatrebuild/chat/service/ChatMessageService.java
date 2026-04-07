@@ -1,5 +1,6 @@
 package io.github.nanmazino.chatrebuild.chat.service;
 
+import io.github.nanmazino.chatrebuild.chat.cache.ChatCacheService;
 import io.github.nanmazino.chatrebuild.chat.dto.request.ChatSendRequest;
 import io.github.nanmazino.chatrebuild.chat.dto.response.ChatMessageHistoryResponse;
 import io.github.nanmazino.chatrebuild.chat.dto.response.ChatMessageResponse;
@@ -19,6 +20,7 @@ import org.springframework.transaction.annotation.Transactional;
 @Transactional(readOnly = true)
 public class ChatMessageService {
 
+    private final ChatCacheService chatCacheService;
     private final ChatMembershipService chatMembershipService;
     private final ChatMessageRepository chatMessageRepository;
 
@@ -59,6 +61,7 @@ public class ChatMessageService {
             savedMessage.getContent(),
             savedMessage.getCreatedAt()
         );
+        chatCacheService.evictRoomSummaryAfterCommit(activeMember.getRoom().getId());
 
         return ChatMessageResponse.from(savedMessage);
     }
