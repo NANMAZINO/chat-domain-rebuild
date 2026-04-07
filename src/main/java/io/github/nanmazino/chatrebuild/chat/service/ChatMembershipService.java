@@ -1,5 +1,6 @@
 package io.github.nanmazino.chatrebuild.chat.service;
 
+import io.github.nanmazino.chatrebuild.chat.cache.ChatCacheService;
 import io.github.nanmazino.chatrebuild.chat.entity.ChatRoom;
 import io.github.nanmazino.chatrebuild.chat.entity.ChatRoomMember;
 import io.github.nanmazino.chatrebuild.chat.entity.ChatRoomMemberStatus;
@@ -32,6 +33,7 @@ public class ChatMembershipService {
     private final PostRepository postRepository;
     private final ChatRoomRepository chatRoomRepository;
     private final ChatRoomMemberRepository chatRoomMemberRepository;
+    private final ChatCacheService chatCacheService;
     private final UserRepository userRepository;
     private final TransactionTemplate serializableTransactionTemplate;
 
@@ -39,12 +41,14 @@ public class ChatMembershipService {
         PostRepository postRepository,
         ChatRoomRepository chatRoomRepository,
         ChatRoomMemberRepository chatRoomMemberRepository,
+        ChatCacheService chatCacheService,
         UserRepository userRepository,
         PlatformTransactionManager transactionManager
     ) {
         this.postRepository = postRepository;
         this.chatRoomRepository = chatRoomRepository;
         this.chatRoomMemberRepository = chatRoomMemberRepository;
+        this.chatCacheService = chatCacheService;
         this.userRepository = userRepository;
         this.serializableTransactionTemplate = new TransactionTemplate(transactionManager);
         this.serializableTransactionTemplate.setIsolationLevel(TransactionDefinition.ISOLATION_SERIALIZABLE);
@@ -91,6 +95,7 @@ public class ChatMembershipService {
                 : reactivateMember(member, joinedAt);
 
             chatRoom.increaseMemberCount();
+            chatCacheService.evictRoomSummaryAfterCommit(chatRoom.getId());
 
             return new JoinPostResponse(
                 post.getId(),
@@ -111,6 +116,7 @@ public class ChatMembershipService {
             LocalDateTime leftAt = LocalDateTime.now();
             member.leave(leftAt);
             chatRoom.decreaseMemberCount();
+            chatCacheService.evictRoomSummaryAfterCommit(chatRoom.getId());
 
             return new LeavePostResponse(
                 post.getId(),

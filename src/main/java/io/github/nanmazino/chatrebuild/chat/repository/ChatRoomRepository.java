@@ -1,13 +1,31 @@
 package io.github.nanmazino.chatrebuild.chat.repository;
 
+import io.github.nanmazino.chatrebuild.chat.dto.response.ChatRoomDetailResponse;
 import io.github.nanmazino.chatrebuild.chat.entity.ChatRoom;
 import java.util.Optional;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
+import org.springframework.data.repository.query.Param;
 
 public interface ChatRoomRepository extends JpaRepository<ChatRoom, Long> {
 
     Optional<ChatRoom> findByPostId(Long postId);
+
+    @Query("""
+        select new io.github.nanmazino.chatrebuild.chat.dto.response.ChatRoomDetailResponse(
+            room.id,
+            post.id,
+            post.title,
+            room.memberCount,
+            room.lastMessageId,
+            room.lastMessagePreview,
+            room.lastMessageAt
+        )
+        from ChatRoom room
+        join room.post post
+        where room.id = :roomId
+        """)
+    Optional<ChatRoomDetailResponse> findRoomSummaryById(@Param("roomId") Long roomId);
 
     @Query(value = """
         select *
