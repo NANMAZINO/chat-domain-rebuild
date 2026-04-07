@@ -12,20 +12,26 @@ public interface ChatRoomRepository extends JpaRepository<ChatRoom, Long> {
     Optional<ChatRoom> findByPostId(Long postId);
 
     @Query("""
-        select new io.github.nanmazino.chatrebuild.chat.dto.response.ChatRoomDetailResponse(
+        select new io.github.nanmazino.chatrebuild.chat.repository.ChatRoomSummaryCacheSource(
             room.id,
             post.id,
             post.title,
             room.memberCount,
             room.lastMessageId,
             room.lastMessagePreview,
-            room.lastMessageAt
+            room.lastMessageAt,
+            room.createdAt
         )
         from ChatRoom room
         join room.post post
         where room.id = :roomId
         """)
-    Optional<ChatRoomDetailResponse> findRoomSummaryById(@Param("roomId") Long roomId);
+    Optional<ChatRoomSummaryCacheSource> findRoomSummaryCacheSourceById(@Param("roomId") Long roomId);
+
+    default Optional<ChatRoomDetailResponse> findRoomSummaryById(Long roomId) {
+        return findRoomSummaryCacheSourceById(roomId)
+            .map(ChatRoomSummaryCacheSource::toResponse);
+    }
 
     @Query(value = """
         select *

@@ -17,10 +17,18 @@ public class RedisConfig {
         RedisConnectionFactory redisConnectionFactory,
         ObjectMapper objectMapper
     ) {
-        RedisTemplate<String, ChatRoomDetailResponse> redisTemplate = new RedisTemplate<>();
+        return createRedisTemplate(redisConnectionFactory, objectMapper, ChatRoomDetailResponse.class);
+    }
+
+    private <T> RedisTemplate<String, T> createRedisTemplate(
+        RedisConnectionFactory redisConnectionFactory,
+        ObjectMapper objectMapper,
+        Class<T> valueType
+    ) {
+        RedisTemplate<String, T> redisTemplate = new RedisTemplate<>();
         StringRedisSerializer keySerializer = new StringRedisSerializer();
-        Jackson2JsonRedisSerializer<ChatRoomDetailResponse> valueSerializer =
-            new Jackson2JsonRedisSerializer<>(objectMapper.copy(), ChatRoomDetailResponse.class);
+        Jackson2JsonRedisSerializer<T> valueSerializer =
+            new Jackson2JsonRedisSerializer<>(objectMapper.copy(), valueType);
 
         redisTemplate.setConnectionFactory(redisConnectionFactory);
         redisTemplate.setKeySerializer(keySerializer);
