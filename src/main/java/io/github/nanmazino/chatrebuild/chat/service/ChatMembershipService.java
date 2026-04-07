@@ -58,6 +58,12 @@ public class ChatMembershipService {
         return executeWithLockRetry(() -> doLeavePost(postId, userId));
     }
 
+    public void validateActiveMember(Long roomId, Long userId) {
+        if (!chatRoomMemberRepository.existsByRoomIdAndUserIdAndStatus(roomId, userId, ChatRoomMemberStatus.ACTIVE)) {
+            throw new ChatMemberNotFoundException();
+        }
+    }
+
     public ChatRoomMember getActiveMember(Long roomId, Long userId) {
         return chatRoomMemberRepository.findByRoomIdAndUserId(roomId, userId)
             .filter(member -> member.getStatus() == ChatRoomMemberStatus.ACTIVE)
