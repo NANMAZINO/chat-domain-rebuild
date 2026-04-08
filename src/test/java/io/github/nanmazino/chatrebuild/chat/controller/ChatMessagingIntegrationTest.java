@@ -100,48 +100,65 @@ class ChatMessagingIntegrationTest extends IntegrationTestSupport {
     @Test
     @DisplayName("메시지를 보내면 저장되고 같은 인스턴스 구독자에게 principal sender 기준으로 브로드캐스트된다")
     void sendMessageBroadcastsAndPersistsUsingPrincipalSender() throws Exception {
-        RawStompTestClient.Connection subscriberConnection = stompClient.connect(accessToken(subscriber));
-        subscriberConnection.send(RawStompTestClient.subscribeFrame(room.getId()));
-        subscriberConnection.assertNoFrame();
+        assertMessageBroadcastsAndPersists(
+            room,
+            author,
+            subscriber,
+            """
+                {
+                  "content": "오늘 7시로 확정할게요",
+                  "type": "TEXT",
+                  "senderId": 999,
+                  "nickname": "intruder",
+                  "sender": {
+                    "userId": 999,
+                    "nickname": "intruder"
+                  }
+                }
+                """,
+            author,
+            "오늘 7시로 확정할게요"
+        );
+    }
 
-        RawStompTestClient.Connection senderConnection = stompClient.connect(accessToken(author));
-        senderConnection.send(RawStompTestClient.sendFrame(room.getId(), """
-            {
-              "content": "오늘 7시로 확정할게요",
-              "type": "TEXT",
-              "senderId": 999,
-              "nickname": "intruder",
-              "sender": {
-                "userId": 999,
-                "nickname": "intruder"
-              }
-            }
-            """));
+    @Test
+    @DisplayName("CLOSED 게시글의 ACTIVE 멤버 메시지는 저장되고 구독자에게 브로드캐스트된다")
+    void sendMessageBroadcastsAndPersistsForClosedPostActiveMembers() throws Exception {
+        ChatRoom closedRoom = createRoomWithActiveMembers("closed-room", PostStatus.CLOSED, author, subscriber);
 
-        String frame = subscriberConnection.awaitFrame();
-        JsonNode body = RawStompTestClient.parseBody(objectMapper, frame);
-        ChatMessage savedMessage = chatMessageRepository.findAll().stream()
-            .findFirst()
-            .orElseThrow(() -> new AssertionError("저장된 메시지가 있어야 합니다."));
-        ChatRoom refreshedRoom = chatRoomRepository.findById(room.getId())
-            .orElseThrow(() -> new AssertionError("채팅방이 유지되어야 합니다."));
+        assertMessageBroadcastsAndPersists(
+            closedRoom,
+            author,
+            subscriber,
+            """
+                {
+                  "content": "마감 이후 기존 멤버 대화",
+                  "type": "TEXT"
+                }
+                """,
+            author,
+            "마감 이후 기존 멤버 대화"
+        );
+    }
 
-        assertThat(RawStompTestClient.frameCommand(frame)).isEqualTo("MESSAGE");
-        assertThat(body.path("roomId").asLong()).isEqualTo(room.getId());
-        assertThat(body.path("sender").path("userId").asLong()).isEqualTo(author.getId());
-        assertThat(body.path("sender").path("nickname").asText()).isEqualTo(author.getNickname());
-        assertThat(body.path("content").asText()).isEqualTo("오늘 7시로 확정할게요");
-        assertThat(body.path("type").asText()).isEqualTo(ChatMessageType.TEXT.name());
-        assertThat(body.path("messageId").asLong()).isPositive();
-        assertThat(body.path("createdAt").asText()).isNotBlank();
-        assertThat(chatMessageRepository.countByRoomId(room.getId())).isEqualTo(1);
-        assertThat(savedMessage.getRoom().getId()).isEqualTo(room.getId());
-        assertThat(savedMessage.getSender().getId()).isEqualTo(author.getId());
-        assertThat(savedMessage.getContent()).isEqualTo("오늘 7시로 확정할게요");
-        assertThat(savedMessage.getType()).isEqualTo(ChatMessageType.TEXT);
-        assertThat(refreshedRoom.getLastMessageId()).isEqualTo(savedMessage.getId());
-        assertThat(refreshedRoom.getLastMessagePreview()).isEqualTo("오늘 7시로 확정할게요");
-        assertThat(refreshedRoom.getLastMessageAt()).isEqualTo(savedMessage.getCreatedAt());
+    @Test
+    @DisplayName("DELETED 게시글의 ACTIVE 멤버 메시지는 저장되고 구독자에게 브로드캐스트된다")
+    void sendMessageBroadcastsAndPersistsForDeletedPostActiveMembers() throws Exception {
+        ChatRoom deletedRoom = createRoomWithActiveMembers("deleted-room", PostStatus.DELETED, author, subscriber);
+
+        assertMessageBroadcastsAndPersists(
+            deletedRoom,
+            author,
+            subscriber,
+            """
+                {
+                  "content": "삭제 이후 기존 멤버 대화",
+                  "type": "TEXT"
+                }
+                """,
+            author,
+            "삭제 이후 기존 멤버 대화"
+        );
     }
 
     @Test
@@ -207,6 +224,47 @@ class ChatMessagingIntegrationTest extends IntegrationTestSupport {
         return jwtTokenProvider.generateAccessToken(user.getId(), user.getEmail());
     }
 
+    private void assertMessageBroadcastsAndPersists(
+        ChatRoom targetRoom,
+        User sender,
+        User receiver,
+        String payload,
+        User expectedSender,
+        String expectedContent
+    ) throws Exception {
+        RawStompTestClient.Connection subscriberConnection = stompClient.connect(accessToken(receiver));
+        subscriberConnection.send(RawStompTestClient.subscribeFrame(targetRoom.getId()));
+        subscriberConnection.assertNoFrame();
+
+        RawStompTestClient.Connection senderConnection = stompClient.connect(accessToken(sender));
+        senderConnection.send(RawStompTestClient.sendFrame(targetRoom.getId(), payload));
+
+        String frame = subscriberConnection.awaitFrame();
+        JsonNode body = RawStompTestClient.parseBody(objectMapper, frame);
+        ChatMessage savedMessage = chatMessageRepository.findAll().stream()
+            .findFirst()
+            .orElseThrow(() -> new AssertionError("저장된 메시지가 있어야 합니다."));
+        ChatRoom refreshedRoom = chatRoomRepository.findById(targetRoom.getId())
+            .orElseThrow(() -> new AssertionError("채팅방이 유지되어야 합니다."));
+
+        assertThat(RawStompTestClient.frameCommand(frame)).isEqualTo("MESSAGE");
+        assertThat(body.path("roomId").asLong()).isEqualTo(targetRoom.getId());
+        assertThat(body.path("sender").path("userId").asLong()).isEqualTo(expectedSender.getId());
+        assertThat(body.path("sender").path("nickname").asText()).isEqualTo(expectedSender.getNickname());
+        assertThat(body.path("content").asText()).isEqualTo(expectedContent);
+        assertThat(body.path("type").asText()).isEqualTo(ChatMessageType.TEXT.name());
+        assertThat(body.path("messageId").asLong()).isPositive();
+        assertThat(body.path("createdAt").asText()).isNotBlank();
+        assertThat(chatMessageRepository.countByRoomId(targetRoom.getId())).isEqualTo(1);
+        assertThat(savedMessage.getRoom().getId()).isEqualTo(targetRoom.getId());
+        assertThat(savedMessage.getSender().getId()).isEqualTo(expectedSender.getId());
+        assertThat(savedMessage.getContent()).isEqualTo(expectedContent);
+        assertThat(savedMessage.getType()).isEqualTo(ChatMessageType.TEXT);
+        assertThat(refreshedRoom.getLastMessageId()).isEqualTo(savedMessage.getId());
+        assertThat(refreshedRoom.getLastMessagePreview()).isEqualTo(expectedContent);
+        assertThat(refreshedRoom.getLastMessageAt()).isEqualTo(savedMessage.getCreatedAt());
+    }
+
     private User saveUser(String email, String nickname) {
         return userRepository.save(new User(
             email,
@@ -218,6 +276,14 @@ class ChatMessagingIntegrationTest extends IntegrationTestSupport {
     private ChatRoom createRoom(String title, PostStatus status) {
         Post post = postRepository.save(new Post(author, title, title + "-content", 4, status));
         return chatRoomRepository.save(new ChatRoom(post));
+    }
+
+    private ChatRoom createRoomWithActiveMembers(String title, PostStatus status, User... users) {
+        ChatRoom targetRoom = createRoom(title, status);
+        for (User user : users) {
+            addActiveMember(targetRoom, user);
+        }
+        return targetRoom;
     }
 
     private void addActiveMember(ChatRoom chatRoom, User user) {
