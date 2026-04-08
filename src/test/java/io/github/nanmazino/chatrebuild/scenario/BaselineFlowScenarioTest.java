@@ -2,6 +2,7 @@ package io.github.nanmazino.chatrebuild.scenario;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.patch;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
@@ -85,8 +86,8 @@ class BaselineFlowScenarioTest extends IntegrationTestSupport {
     }
 
     @Test
-    @DisplayName("회원가입부터 채팅방 조회까지 baseline 주요 흐름이 동작한다")
-    void baselineFlowWorksFromSignupToChatRoomQueries() throws Exception {
+    @DisplayName("회원가입부터 읽음 처리 후 unread 반영까지 baseline 주요 흐름이 동작한다")
+    void baselineFlowWorksFromSignupToReadSync() throws Exception {
         signUp("author@example.com", "Password123!", "author");
         signUp("member@example.com", "Password123!", "member");
 
@@ -157,6 +158,18 @@ class BaselineFlowScenarioTest extends IntegrationTestSupport {
         assertThat(latestHistoryMessage.path("messageId").asLong()).isEqualTo(messageId);
         assertThat(latestHistoryMessage.path("content").asText()).isEqualTo(messageContent);
         assertThat(latestHistoryMessage.path("sender").path("nickname").asText()).isEqualTo("author");
+
+        JsonNode readResponse = markAsRead(memberToken, roomId, messageId);
+        assertThat(readResponse.path("data").path("roomId").asLong()).isEqualTo(roomId);
+        assertThat(readResponse.path("data").path("lastReadMessageId").asLong()).isEqualTo(messageId);
+        assertThat(readResponse.path("data").path("lastReadAt").asText()).isNotBlank();
+
+        JsonNode refreshedRoomListResponse = getAuthorized("/api/chat-rooms", memberToken);
+        JsonNode refreshedRoomListItem = refreshedRoomListResponse.path("data").path("items").get(0);
+
+        assertThat(refreshedRoomListItem.path("roomId").asLong()).isEqualTo(roomId);
+        assertThat(refreshedRoomListItem.path("lastReadMessageId").asLong()).isEqualTo(messageId);
+        assertThat(refreshedRoomListItem.path("unreadCount").asLong()).isEqualTo(0L);
     }
 
     private void signUp(String email, String password, String nickname) throws Exception {
@@ -198,6 +211,20 @@ class BaselineFlowScenarioTest extends IntegrationTestSupport {
                     }
                     """.formatted(title, content)))
             .andExpect(status().isCreated())
+            .andReturn();
+
+        return toJson(result);
+    }
+
+    private JsonNode markAsRead(String accessToken, long roomId, long lastReadMessageId) throws Exception {
+        MvcResult result = perform(authorize(patch("/api/chat-rooms/" + roomId + "/read"), accessToken)
+                .contentType(MediaType.APPLICATION_JSON)
+                .content("""
+                    {
+                      "lastReadMessageId": %d
+                    }
+                    """.formatted(lastReadMessageId)))
+            .andExpect(status().isOk())
             .andReturn();
 
         return toJson(result);
