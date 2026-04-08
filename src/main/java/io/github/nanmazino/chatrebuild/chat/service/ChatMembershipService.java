@@ -74,6 +74,15 @@ public class ChatMembershipService {
             .orElseThrow(ChatMemberNotFoundException::new);
     }
 
+    public ChatRoomMember getActiveMemberForUpdate(Long roomId, Long userId) {
+        return chatRoomMemberRepository.findByRoomIdAndUserIdAndStatusForUpdate(
+                roomId,
+                userId,
+                ChatRoomMemberStatus.ACTIVE
+            )
+            .orElseThrow(ChatMemberNotFoundException::new);
+    }
+
     private JoinPostResponse doJoinPost(Long postId, Long userId) {
         return serializableTransactionTemplate.execute(status -> {
             Post post = getPost(postId);

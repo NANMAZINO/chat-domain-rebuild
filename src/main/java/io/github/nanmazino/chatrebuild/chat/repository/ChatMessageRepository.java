@@ -8,6 +8,8 @@ import org.springframework.data.repository.query.Param;
 
 public interface ChatMessageRepository extends JpaRepository<ChatMessage, Long> {
 
+    boolean existsByRoomIdAndId(Long roomId, Long messageId);
+
     long countByRoomId(Long roomId);
 
     long countByRoomIdAndIdGreaterThan(Long roomId, Long messageId);
