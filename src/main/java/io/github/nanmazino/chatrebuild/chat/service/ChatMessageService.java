@@ -6,6 +6,8 @@ import io.github.nanmazino.chatrebuild.chat.dto.response.ChatMessageHistoryRespo
 import io.github.nanmazino.chatrebuild.chat.dto.response.ChatMessageResponse;
 import io.github.nanmazino.chatrebuild.chat.entity.ChatMessage;
 import io.github.nanmazino.chatrebuild.chat.entity.ChatRoomMember;
+import io.github.nanmazino.chatrebuild.chat.pubsub.ChatMessageCreatedEvent;
+import io.github.nanmazino.chatrebuild.chat.pubsub.ChatPubSubService;
 import io.github.nanmazino.chatrebuild.chat.exception.InvalidChatMessageCursorException;
 import io.github.nanmazino.chatrebuild.chat.repository.ChatMessageHistoryProjection;
 import io.github.nanmazino.chatrebuild.chat.repository.ChatMessageRepository;
@@ -21,6 +23,7 @@ import org.springframework.transaction.annotation.Transactional;
 public class ChatMessageService {
 
     private final ChatCacheService chatCacheService;
+    private final ChatPubSubService chatPubSubService;
     private final ChatMembershipService chatMembershipService;
     private final ChatMessageRepository chatMessageRepository;
 
@@ -62,6 +65,7 @@ public class ChatMessageService {
             savedMessage.getCreatedAt()
         );
         chatCacheService.evictRoomSummaryAfterCommit(activeMember.getRoom().getId());
+        chatPubSubService.publishMessageCreatedAfterCommit(ChatMessageCreatedEvent.from(savedMessage));
 
         return ChatMessageResponse.from(savedMessage);
     }

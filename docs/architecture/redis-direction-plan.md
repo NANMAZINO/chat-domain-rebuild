@@ -32,7 +32,7 @@
 
 room summary 응답은 `postTitle`, `memberCount`, `lastMessageId`, `lastMessagePreview`, `lastMessageAt`처럼 방 단위 상태만 담는다. 사용자별 `unreadCount`가 없기 때문에 뒤 마일스톤의 읽음 처리와 직접 충돌하지 않는다. 이 점이 room list와 가장 큰 차이다.
 
-따라서 room summary cache는 “모든 방에 일괄 적용”이 아니라, 최근 일정 시간 동안 새 메시지가 없는 휴면 방에만 적용하는 것이 타당하다. 예를 들어 `lastMessageAt`이 있으면 그 시각을 기준으로 30분 이상 지난 방만 cache 대상으로 보고, `lastMessageAt`이 `null`인 방은 생성 시각 기준으로 30분 이상 지난 경우에만 포함한다. TTL은 1시간 정도로 길게 둔다. 정확성은 TTL이 아니라 기존의 after-commit eviction으로 맞춘다. 즉, 메시지 전송, 참여/나가기, 게시글 제목 수정 시에는 지금처럼 cache를 비우고, 조용한 기간에는 반복 조회를 Redis가 흡수하게 한다.
+따라서 room summary cache는 “모든 방에 일괄 적용”이 아니라, 최근 일정 시간 동안 새 메시지가 없는 휴면 방에만 적용하는 것이 타당하다. 예를 들어 `lastMessageAt`이 있으면 그 시각을 기준으로 30분 이상 지난 방만 cache 대상으로 보고, `lastMessageAt`이 `null`인 방은 생성 시각 기준으로 30분 이상 지난 경우에만 포함한다. TTL은 1시간 정도로 길게 둔다. 정확성은 TTL이 아니라 기존의 after-commit eviction으로 맞춘다. 즉, 메시지 전송, 참여/나가기, 게시글 수정(`updatePost`) 시에는 지금처럼 cache를 비우고, 조용한 기간에는 반복 조회를 Redis가 흡수하게 한다.
 
 이 cache는 핵심 성능 전략이 아니라 범위를 좁힌 보조 최적화로 설명해야 한다. Redis의 대표 역할을 summary cache에 두지는 않는다.
 

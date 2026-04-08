@@ -1,7 +1,6 @@
 package io.github.nanmazino.chatrebuild.chat.controller;
 
 import io.github.nanmazino.chatrebuild.chat.dto.request.ChatSendRequest;
-import io.github.nanmazino.chatrebuild.chat.dto.response.ChatMessageResponse;
 import io.github.nanmazino.chatrebuild.chat.service.ChatMessageService;
 import io.github.nanmazino.chatrebuild.global.security.JwtPrincipal;
 import java.security.Principal;
@@ -9,7 +8,6 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.messaging.handler.annotation.DestinationVariable;
 import org.springframework.messaging.handler.annotation.MessageMapping;
 import org.springframework.messaging.handler.annotation.Payload;
-import org.springframework.messaging.simp.SimpMessagingTemplate;
 import org.springframework.security.authentication.AuthenticationCredentialsNotFoundException;
 import org.springframework.security.core.Authentication;
 import org.springframework.stereotype.Controller;
@@ -19,7 +17,6 @@ import org.springframework.stereotype.Controller;
 public class ChatStompController {
 
     private final ChatMessageService chatMessageService;
-    private final SimpMessagingTemplate messagingTemplate;
 
     @MessageMapping("/chat-rooms/{roomId}/messages")
     public void sendMessage(
@@ -28,9 +25,7 @@ public class ChatStompController {
         Principal principal
     ) {
         JwtPrincipal jwtPrincipal = extractJwtPrincipal(principal);
-        ChatMessageResponse response = chatMessageService.sendMessage(roomId, jwtPrincipal.userId(), request);
-
-        messagingTemplate.convertAndSend("/sub/chat-rooms/" + roomId, response);
+        chatMessageService.sendMessage(roomId, jwtPrincipal.userId(), request);
     }
 
     private JwtPrincipal extractJwtPrincipal(Principal principal) {
