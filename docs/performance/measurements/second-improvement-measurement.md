@@ -1,13 +1,13 @@
-# Improved Snapshot (2026-04-07)
+# Second Improvement Measurement Snapshot
 
-이 문서는 2026-04-07에 current 브랜치에서 strict 모드로 재측정한 final-path after 스냅샷입니다.
-Issue 22의 공식 비교는 [Historical Baseline Rerun Snapshot (2026-04-07)](baseline-rerun-same-machine-2026-04-07.md)과 이 문서를 before/after 한 쌍으로 읽습니다.
+이 문서는 current 브랜치에서 strict 모드로 재측정한 공식 after 스냅샷이다.
+공식 비교는 [기준선 측정](baseline-measurement.md)과 이 문서를 before/after 한 쌍으로 읽는다.
 
 ## 기준 리포트
 
 - 측정 일시: 2026-04-07 20:59:06 KST
-- 실행 명령: `./gradlew baselineMeasurement -Dbaseline.measurement.strict=true`
-- 기록 방식: 이 문서는 strict 실행 당시 생성된 `docs/performance/measurements/baseline-latest.md` 값을 옮겨 적어 확정한 after 스냅샷입니다.
+- 실행 명령: `.\gradlew.bat baselineMeasurement '-Dbaseline.measurement.strict=true'`
+- 기록 방식: 이 문서는 strict 실행 당시 생성된 `docs/performance/measurements/latest-measurement.md` 값을 옮겨 적어 확정한 after 스냅샷입니다.
 
 ## 대표 after 수치
 
