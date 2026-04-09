@@ -1,13 +1,12 @@
-# Historical Baseline Rerun Snapshot (2026-04-07)
+# Baseline Measurement Snapshot
 
-이 문서는 2026-04-07에 baseline 구현 커밋 `b961dac`를 같은 머신에서 다시 실행해 얻은 before 수치 기록입니다.
-Issue 22의 공식 same-machine before 스냅샷이며, 최초 baseline 기록은 [Baseline Snapshot (2026-04-07)](baseline-2026-04-07.md)에 따로 보관합니다.
+이 문서는 공식 before 비교에 사용하는 기준선 측정 스냅샷이다.
 
 ## 기준 리포트
 
 - 측정 일시: 2026-04-07 07:19:23 KST
 - 측정 대상 커밋: `b961dac` (`test: baseline 측정 기준과 비교 문서 정리`)
-- 실행 명령: `./gradlew baselineMeasurement`
+- 실행 명령: `.\gradlew.bat baselineMeasurement`
 - 기록 방식: detached worktree에서 생성된 raw latest 리포트 값을 옮겨 적어 확정했습니다.
 - 참고: 이 rerun은 non-strict로 실행했습니다. `strict` 옵션은 안정성 편차를 실패 조건으로만 바꾸며 raw p95 수집 방식과 수치 계산 방식은 바꾸지 않습니다.
 
