@@ -202,7 +202,7 @@ class ChatRoomControllerTest extends IntegrationTestSupport {
     void getMessagesSuccess() throws Exception {
         RoomFixture fixture = createRoomWithMembers("title", PostStatus.OPEN, true);
         ChatRoom room = fixture.room();
-        ChatMessage oldest = chatMessageRepository.save(new ChatMessage(room, author, "첫 메시지", ChatMessageType.TEXT));
+        chatMessageRepository.save(new ChatMessage(room, author, "첫 메시지", ChatMessageType.TEXT));
         ChatMessage middle = chatMessageRepository.save(new ChatMessage(room, activeMember, "두 번째 메시지", ChatMessageType.TEXT));
         ChatMessage latest = chatMessageRepository.save(new ChatMessage(room, author, "세 번째 메시지", ChatMessageType.TEXT));
         String accessToken = jwtTokenProvider.generateAccessToken(activeMember.getId(), activeMember.getEmail());
