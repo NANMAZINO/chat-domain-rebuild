@@ -290,7 +290,7 @@ class ChatMessageServiceTest extends IntegrationTestSupport {
     }
 
     @Test
-    @DisplayName("게시글이 CLOSED 또는 DELETED여도 ACTIVE 멤버는 히스토리를 조회할 수 있다")
+    @DisplayName("게시글이 CLOSED 또는 DELETED여도 ACTIVE 멤버는 메시지 내역을 조회할 수 있다")
     void getMessagesAllowsActiveMemberForClosedOrDeletedPost() {
         MessageFixture closedFixture = createMessageFixture(PostStatus.CLOSED);
         chatMessageRepository.save(new ChatMessage(closedFixture.room(), closedFixture.author(), "닫힘", ChatMessageType.TEXT));
@@ -319,7 +319,7 @@ class ChatMessageServiceTest extends IntegrationTestSupport {
     }
 
     @Test
-    @DisplayName("ACTIVE 멤버가 아니면 메시지 히스토리 조회에 실패한다")
+    @DisplayName("ACTIVE 멤버가 아니면 메시지 내역 조회에 실패한다")
     void getMessagesFailsForNonActiveMember() {
         MessageFixture fixture = createMessageFixture(PostStatus.OPEN);
         User outsider = userRepository.save(new User("outsider@test.com", "pw", "outsider"));

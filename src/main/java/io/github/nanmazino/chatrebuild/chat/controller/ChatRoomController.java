@@ -70,7 +70,7 @@ public class ChatRoomController {
     }
 
     @GetMapping("/{roomId}/messages")
-    @Operation(summary = "메시지 히스토리 조회", description = "인증 사용자가 채팅방 메시지 히스토리를 cursor 기반으로 조회합니다.")
+    @Operation(summary = "메시지 내역 조회", description = "인증 사용자가 채팅방 메시지 내역을 cursor 기반으로 조회합니다.")
     public ResponseEntity<ApiResponse<ChatMessageHistoryResponse>> getMessages(
         @PathVariable Long roomId,
         @AuthenticationPrincipal JwtPrincipal principal,

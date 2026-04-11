@@ -198,11 +198,11 @@ class ChatRoomControllerTest extends IntegrationTestSupport {
     }
 
     @Test
-    @DisplayName("ACTIVE 멤버는 메시지 히스토리를 최신순 cursor 응답으로 조회할 수 있다")
+    @DisplayName("ACTIVE 멤버는 메시지 내역을 최신순 cursor 응답으로 조회할 수 있다")
     void getMessagesSuccess() throws Exception {
         RoomFixture fixture = createRoomWithMembers("title", PostStatus.OPEN, true);
         ChatRoom room = fixture.room();
-        ChatMessage oldest = chatMessageRepository.save(new ChatMessage(room, author, "첫 메시지", ChatMessageType.TEXT));
+        chatMessageRepository.save(new ChatMessage(room, author, "첫 메시지", ChatMessageType.TEXT));
         ChatMessage middle = chatMessageRepository.save(new ChatMessage(room, activeMember, "두 번째 메시지", ChatMessageType.TEXT));
         ChatMessage latest = chatMessageRepository.save(new ChatMessage(room, author, "세 번째 메시지", ChatMessageType.TEXT));
         String accessToken = jwtTokenProvider.generateAccessToken(activeMember.getId(), activeMember.getEmail());
@@ -296,7 +296,7 @@ class ChatRoomControllerTest extends IntegrationTestSupport {
     }
 
     @Test
-    @DisplayName("인증 없이 메시지 히스토리를 조회하면 401을 반환한다")
+    @DisplayName("인증 없이 메시지 내역을 조회하면 401을 반환한다")
     void getMessagesUnauthorizedWithoutToken() throws Exception {
         ChatRoom room = createRoomWithMembers("title", PostStatus.OPEN, true).room();
 
